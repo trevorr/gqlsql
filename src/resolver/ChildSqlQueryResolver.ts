@@ -1,7 +1,7 @@
 import { QueryBuilder } from 'knex';
 import { ConnectionArgs, Row, RowsQueryBuilder, SqlQueryResolver, SqlResolverOptions } from './api';
 import { ContainingSqlQueryResolver } from './ContainingSqlQueryResolver';
-import { debug, FetchMap, FetchResult, InternalSqlResolverFactory, SqlChildQueryResolver } from './internal';
+import { FetchMap, FetchResult, InternalSqlResolverFactory, SqlChildQueryResolver } from './internal';
 import { EquiJoinSpec, getConnectingKey, getFromKey, getToKey, isEquiJoin, isSameKey, JoinSpec } from './JoinSpec';
 import { getKnexSelectColumn, KnexSqlQueryResolver } from './KnexSqlQueryResolver';
 import { findMap } from './util';
@@ -155,7 +155,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     return childrenPromise;
   }
 
-  private async fetchRows(parentKeys: KeyValue[][]): Promise<Row[]> {
+  private fetchRows(parentKeys: KeyValue[][]): Promise<Row[]> {
     const baseQuery = this.getBaseQuery().clone();
     const { toTable, toColumns, toRestrictions = [] } = this.join;
     const qualifiedColumns = toColumns.map(toColumn => getKnexSelectColumn({ table: toTable, column: toColumn }));
@@ -168,12 +168,10 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
       }
     }
     const dataQuery = this.buildDataQuery(baseQuery);
-    debug(`${this}.fetchRows: ${dataQuery.toSQL().sql} ${dataQuery.toSQL().bindings}`);
-    const rows = await dataQuery;
-    return rows;
+    return this.options.sqlExecutor.execute(dataQuery);
   }
 
-  private async fetchTotalCounts(parentKeys: KeyValue[][]): Promise<Row[]> {
+  private fetchTotalCounts(parentKeys: KeyValue[][]): Promise<Row[]> {
     const baseQuery = this.getBaseQuery().clone();
     const { toTable, toColumns } = this.join;
     const qualifiedColumns = toColumns.map(toColumn => getKnexSelectColumn({ table: toTable, column: toColumn }));
@@ -183,9 +181,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
         .whereIn(qualifiedColumns, parentKeys)
         .groupBy(qualifiedColumns)
     );
-    debug(`${this}.fetchTotalCounts: ${countQuery.toSQL().sql} ${countQuery.toSQL().bindings}`);
-    const rows = await countQuery;
-    return rows;
+    return this.options.sqlExecutor.execute(countQuery);
   }
 
   public dumpProperties(d: PropertyDumper): void {

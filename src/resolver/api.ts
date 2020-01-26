@@ -115,17 +115,16 @@ export interface SqlPageInfoResolver {
   addEndCursor(field: string): void;
 }
 
+export interface SqlExecutor {
+  execute<T>(query: QueryBuilder<any, T>): Promise<T>;
+}
+
 export interface SqlResolverOptions {
   defaultLimit: number;
   maxLimit: number;
+  sqlExecutor: SqlExecutor;
   userInputError: { new (message: string): any };
 }
-
-export const DefaultQueryResolverOptions: SqlResolverOptions = {
-  defaultLimit: 20,
-  maxLimit: 100,
-  userInputError: Error
-};
 
 export interface SqlResolverFactory {
   createQuery(table: string, args?: ConnectionArgs, options?: Partial<SqlResolverOptions>): SqlQueryRootResolver;
@@ -138,5 +137,6 @@ export interface SqlResolverFactory {
 
 export interface SqlResolverContext {
   knex: Knex;
+  sqlExecutor: SqlExecutor;
   resolverFactory: SqlResolverFactory;
 }

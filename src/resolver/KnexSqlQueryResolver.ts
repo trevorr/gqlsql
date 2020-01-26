@@ -4,7 +4,6 @@ import { snakeCase } from 'snake-case';
 import { Memoize } from 'typescript-memoize';
 import {
   ConnectionArgs,
-  DefaultQueryResolverOptions,
   Json,
   JsonObject,
   Row,
@@ -15,6 +14,7 @@ import {
 } from './api';
 import { ColumnRestriction } from './ColumnRestriction';
 import { applyCursorFilter, makeCursor } from './cursor';
+import { getDefaultSqlExecutor } from './DefaultSqlExecutor';
 import { DelegatingSqlQueryResolver } from './DelegatingSqlQueryResolver';
 import {
   BaseSqlQueryResolver,
@@ -51,12 +51,19 @@ interface JoinTable {
   referenced: boolean;
 }
 
+const DefaultResolverOptions: SqlResolverOptions = {
+  defaultLimit: 20,
+  maxLimit: 100,
+  sqlExecutor: getDefaultSqlExecutor(),
+  userInputError: Error
+};
+
 export abstract class KnexSqlQueryResolver extends TableResolver implements BaseSqlQueryResolver {
   protected readonly resolverFactory: InternalSqlResolverFactory;
   protected readonly knex: Knex;
   private readonly baseQuery: RowsQueryBuilder;
   private readonly args: ConnectionArgs;
-  private readonly options: SqlResolverOptions;
+  protected readonly options: SqlResolverOptions;
   private readonly selects = new Map<string, Select>();
   protected readonly orderByColumns = new Map<string, OrderByColumn>();
   private readonly orderByColumnNames: string[] = [];
@@ -77,7 +84,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     this.knex = knex;
     this.baseQuery = knex(baseTable);
     this.args = args;
-    this.options = Object.assign({}, DefaultQueryResolverOptions, options);
+    this.options = Object.assign({}, DefaultResolverOptions, options);
     this.reverseOrder = args.last != null && args.first == null;
   }
 

@@ -8,7 +8,7 @@ import { KnexSqlQueryResolver } from './KnexSqlQueryResolver';
 import { RootSqlConnectionResolver } from './RootSqlConnectionResolver';
 import { RootSqlQueryResolver } from './RootSqlQueryResolver';
 
-export class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
+class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
   public constructor(private readonly knex: Knex, private readonly defaultOptions?: Partial<SqlResolverOptions>) {}
 
   public createQuery(

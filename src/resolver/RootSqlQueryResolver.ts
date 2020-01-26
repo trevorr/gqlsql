@@ -8,7 +8,7 @@ import {
   SqlQueryRootResolver,
   SqlResolverOptions
 } from './api';
-import { debug, FetchLookup, FetchMap, InternalSqlResolverFactory } from './internal';
+import { FetchLookup, FetchMap, InternalSqlResolverFactory } from './internal';
 import { KnexSqlQueryResolver } from './KnexSqlQueryResolver';
 
 export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQueryRootResolver {
@@ -52,17 +52,14 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
     return map;
   }
 
-  private async fetchRows(): Promise<Row[]> {
+  private fetchRows(): Promise<Row[]> {
     const query = this.buildDataQuery(this.getBaseQuery().clone());
-    debug(`${this}.fetchRows: ${query.toSQL().sql} ${query.toSQL().bindings}`);
-    const rows = await query;
-    return rows;
+    return this.options.sqlExecutor.execute(query);
   }
 
   private async fetchTotalCount(): Promise<number> {
     const query = this.buildTotalCountQuery(this.getBaseQuery().clone());
-    debug(`${this}.fetchTotalCount: ${query.toSQL().sql} ${query.toSQL().bindings}`);
-    const rows = await query;
+    const rows = await this.options.sqlExecutor.execute(query);
     return parseInt(rows[0].totalCount);
   }
 
