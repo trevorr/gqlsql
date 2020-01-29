@@ -134,9 +134,3 @@ export interface SqlResolverFactory {
     options?: Partial<SqlResolverOptions>
   ): SqlConnectionRootResolver;
 }
-
-export interface SqlResolverContext {
-  knex: Knex;
-  sqlExecutor: SqlExecutor;
-  resolverFactory: SqlResolverFactory;
-}
