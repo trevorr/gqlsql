@@ -55,9 +55,11 @@ export interface SqlFieldResolver {
   addObjectField(field: string, join?: JoinSpec): SqlQueryResolver;
   addUnionField(field: string, joins: UnionJoinSpec[]): SqlUnionQueryResolver;
   addConnection(field: string, join: EquiJoinSpec, args: ConnectionArgs): SqlConnectionResolver;
+  qualifyColumn(column: string, table?: string): string;
 }
 
 export interface SqlQueryResolver extends SqlFieldResolver {
+  getKnex(): Knex;
   getBaseQuery(): RowsQueryBuilder;
   addTable(join: JoinSpec): this;
   addSelectColumn(column: string, table?: string): string;

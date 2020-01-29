@@ -21,6 +21,10 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this.baseResolver;
   }
 
+  public getKnex(): Knex {
+    return this.baseResolver.getKnex();
+  }
+
   public getBaseQuery(): RowsQueryBuilder {
     return this.baseResolver.getBaseQuery();
   }

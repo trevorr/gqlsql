@@ -40,6 +40,10 @@ export class TableResolver extends FieldResolver {
     return alias;
   }
 
+  public qualifyColumn(column: string, table?: string): string {
+    return `${this.getTableAlias(table || this.defaultTable)}.${column}`;
+  }
+
   protected resolveJoin<T extends JoinSpec>(join: T): T;
   protected resolveJoin<T extends JoinSpec>(join: T | undefined): T | undefined;
   protected resolveJoin<T extends JoinSpec>(join: T | undefined): T | undefined {
