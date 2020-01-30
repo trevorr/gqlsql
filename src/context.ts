@@ -1,5 +1,5 @@
 import Knex from 'knex';
-import { TableMetadata, TypeMetadata } from './meta';
+import { getXidTable, TableMetadata, TypeMetadata } from './meta';
 import { createFactory, getDefaultSqlExecutor, SqlExecutor, SqlResolverFactory, SqlResolverOptions } from './resolver';
 
 export interface GetIdForSidOptions {
@@ -56,26 +56,10 @@ class SqlResolverContextImpl implements SqlResolverContext {
     options: GetIdForXidOptions = {}
   ): Promise<string> {
     const { trx = this.knex, idColumn = 'id', xidColumn = 'xid' } = options;
-    const parts = xid.split('_');
-    const tableId = parts.length > 1 ? parts.shift() : undefined;
-    xid = parts[0];
-
-    let tableName;
-    if ('tableName' in meta) {
-      tableName = meta.tableName;
-    } else if (!tableId) {
-      throw new Error(`Prefix expected in ${meta.typeName} ID "${xid}" for "${field}"`);
-    } else {
-      const tableMeta = meta.tableIds[tableId];
-      if (!tableMeta) {
-        throw new Error(`Unknown prefix in ${meta.typeName} ID "${xid}" for "${field}"`);
-      }
-      tableName = tableMeta.tableName;
-    }
-
+    const [objectId, tableName] = getXidTable(xid, meta);
     const query = trx(tableName)
       .select(idColumn)
-      .where(xidColumn, xid);
+      .where(xidColumn, objectId);
     const rows = await this.sqlExecutor.execute<any>(query);
     if (!rows.length) {
       throw new Error(`Unknown ${meta.typeName} ID "${xid}" for "${field}"`);
