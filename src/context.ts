@@ -10,7 +10,7 @@ export interface GetIdForSidOptions {
 
 export interface GetIdForXidOptions {
   idColumn?: string;
-  xidColumn?: string;
+  ridColumn?: string;
   trx?: Knex.Transaction;
 }
 
@@ -55,11 +55,11 @@ class SqlResolverContextImpl implements SqlResolverContext {
     meta: TypeMetadata,
     options: GetIdForXidOptions = {}
   ): Promise<string> {
-    const { trx = this.knex, idColumn = 'id', xidColumn = 'xid' } = options;
+    const { trx = this.knex, idColumn = 'id', ridColumn = 'rid' } = options;
     const [objectId, tableName] = getXidTable(xid, meta);
     const query = trx(tableName)
       .select(idColumn)
-      .where(xidColumn, objectId);
+      .where(ridColumn, objectId);
     const rows = await this.sqlExecutor.execute<any>(query);
     if (!rows.length) {
       throw new Error(`Unknown ${meta.typeName} ID "${xid}" for "${field}"`);
