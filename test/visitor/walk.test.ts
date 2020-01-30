@@ -3,7 +3,7 @@ import { execute, GraphQLResolveInfo } from 'graphql';
 import gql from 'graphql-tag';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
-import { FieldVisitors, TypeVisitors, walk, walkSelections } from '../../src/visitor';
+import { FieldVisitorDefault, FieldVisitors, TypeVisitors, walk, walkSelections } from '../../src/visitor';
 import query from './query';
 import { getExecutableSchema } from './schema';
 
@@ -291,5 +291,50 @@ describe('walkSelections', () => {
     expect(fieldVisitor).to.have.been.calledWith('lastName');
     expect(fieldVisitor).to.have.been.not.calledWith('name');
     expect(fieldVisitor).to.have.been.not.calledWith('owner');
+  });
+
+  it('walks with default field', async () => {
+    const root = {};
+    const context: Context = {};
+    const fieldVisitor = sinon.spy();
+    const defaultFieldVisitor = sinon.spy();
+    const personVisitors: FieldVisitors<Context> = {
+      firstName(ctx, info) {
+        expect(ctx).to.equal(context);
+        fieldVisitor(info.fieldName);
+      },
+      lastName(ctx, info) {
+        expect(ctx).to.equal(context);
+        fieldVisitor(info.fieldName);
+      },
+      [FieldVisitorDefault](ctx, info, visitors) {
+        expect(ctx).to.equal(context);
+        defaultFieldVisitor(info.fieldName);
+        walkSelections(context, info, visitors);
+      }
+    };
+    const visitors: TypeVisitors<Context> = {
+      Person: personVisitors
+    };
+    const resolvers = {
+      Query: {
+        person(parent: {}, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
+          expect(parent).to.equal(root);
+          expect(args.id).to.equal(5);
+          walkSelections(context, info, visitors);
+        }
+      }
+    };
+    const result = await execute(getExecutableSchema(resolvers), query, root, context, {
+      skipId: true,
+      includeCount: false
+    });
+    expect(result.errors).to.be.undefined;
+
+    expect(fieldVisitor).to.have.been.calledWith('firstName');
+    expect(fieldVisitor).to.have.been.calledWith('lastName');
+    expect(fieldVisitor).to.have.callCount(4);
+    expect(defaultFieldVisitor).to.have.been.calledWith('friends');
+    expect(defaultFieldVisitor).to.have.callCount(1);
   });
 });

@@ -1,3 +1,4 @@
+import { GraphQLSchema } from 'graphql';
 import gql from 'graphql-tag';
 import { IResolvers, makeExecutableSchema } from 'graphql-tools';
 
@@ -53,7 +54,7 @@ const schema = gql`
 
 export function getExecutableSchema<TContext = any>(
   resolvers: IResolvers<any, TContext> | Array<IResolvers<any, TContext>>
-) {
+): GraphQLSchema {
   return makeExecutableSchema({
     typeDefs: schema,
     resolvers,

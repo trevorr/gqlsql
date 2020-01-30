@@ -13,7 +13,7 @@ import {
 } from 'graphql';
 import { GraphQLVisitorInfo } from './GraphQLVisitorInfo';
 import { isTrueValue } from './values';
-import { FieldVisitors, ShallowFieldVisitors, TypeVisitors } from './visitors';
+import { FieldVisitorDefault, FieldVisitors, ShallowFieldVisitors, TypeVisitors } from './visitors';
 
 export interface WalkOptions {
   fragmentPredicate?(type: GraphQLNamedType): boolean;
@@ -57,7 +57,7 @@ function walkField<TContext, TNestedContext>(
   options?: WalkOptions
 ): TContext {
   if (fieldVisitors) {
-    const beforeVisitor = fieldVisitors[info.fieldName];
+    const beforeVisitor = fieldVisitors[info.fieldName] || fieldVisitors[FieldVisitorDefault];
     if (beforeVisitor) {
       const result = beforeVisitor(context, info, visitors);
       if (result !== undefined) {

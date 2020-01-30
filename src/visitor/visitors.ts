@@ -1,5 +1,7 @@
 import { GraphQLVisitorInfo } from './GraphQLVisitorInfo';
 
+export const FieldVisitorDefault: unique symbol = Symbol('Fallback key for field visitors');
+
 export type RecursiveVisitor<TContext = any> = (
   context: TContext,
   info: GraphQLVisitorInfo,
@@ -14,10 +16,12 @@ export type ShallowVisitor<TContext = any, TNestedContext = any> = (
 
 export interface FieldVisitors<TContext = any> {
   [key: string]: RecursiveVisitor<TContext> | undefined;
+  [FieldVisitorDefault]?: RecursiveVisitor<TContext>;
 }
 
 export interface ShallowFieldVisitors<TContext = any, TNestedContext = any> {
   [key: string]: ShallowVisitor<TContext, TNestedContext> | undefined;
+  [FieldVisitorDefault]?: ShallowVisitor<TContext, TNestedContext>;
 }
 
 export interface TypeVisitors<TContext = any> {
