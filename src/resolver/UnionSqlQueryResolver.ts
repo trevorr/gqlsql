@@ -41,9 +41,9 @@ export class UnionSqlQueryResolver extends DelegatingSqlQueryResolver implements
       return super.addSelectColumn(column, tables);
     }
 
-    return this.addSelectColumnFromAlias(
-      column,
-      tables.map(table => this.getTableAlias(table))
+    return this.addSelectCoalesceFromAlias(
+      tables.map(table => [this.getTableAlias(table), column]),
+      column
     );
   }
 
@@ -51,17 +51,30 @@ export class UnionSqlQueryResolver extends DelegatingSqlQueryResolver implements
     if (!Array.isArray(tableAliases)) {
       tableAliases = [tableAliases];
     }
+    return this.addSelectCoalesceFromAlias(
+      tableAliases.map(tableAlias => [tableAlias, column]),
+      column
+    );
+  }
 
+  public addSelectCoalesce(tableQualifiedColumns: [string, string][], columnAlias?: string): string {
+    return this.addSelectCoalesceFromAlias(
+      tableQualifiedColumns.map(([table, column]) => [this.getTableAlias(table), column]),
+      columnAlias
+    );
+  }
+
+  public addSelectCoalesceFromAlias(aliasQualifiedColumns: [string, string][], columnAlias?: string): string {
     let sql = 'coalesce(';
     let nextParam = '??.??';
     const bindings = [];
-    for (const table of tableAliases) {
+    for (const [tableAlias, column] of aliasQualifiedColumns) {
       sql += nextParam;
-      bindings.push(table, column);
+      bindings.push(tableAlias, column);
       nextParam = ', ??.??';
     }
     sql += ')';
-    return this.baseResolver.addSelectExpression(this.baseResolver.getKnex().raw(sql, bindings), column);
+    return this.baseResolver.addSelectExpression(this.baseResolver.getKnex().raw(sql, bindings), columnAlias);
   }
 
   public addOrderBy(column: string, tables?: string | string[], descending = false): this {

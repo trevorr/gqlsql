@@ -58,7 +58,7 @@ export interface SqlTypeVisitors {
 export interface SqlFieldResolver {
   readonly visitors: SqlTypeVisitors;
   addConstantField(field: string, value: Json): this;
-  addColumnField(field: string, column: string, table?: string, func?: (value: any) => Json): this;
+  addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this;
   addExpressionField(field: string, expr: string | Knex.Raw, alias?: string): this;
   addDerivedField(field: string, func: (row: Row) => Json): this;
   addObjectField(field: string, join?: JoinSpec): SqlQueryResolver;
@@ -85,9 +85,11 @@ export interface SqlQueryResolver extends SqlFieldResolver {
 
 export interface SqlUnionQueryResolver extends SqlQueryResolver {
   getTypeNameFromRow(row: Row): string | null;
-  addColumnField(field: string, column: string, tables?: string | string[], func?: (value: any) => Json): this;
+  addColumnField(field: string, column: string, tables?: string | string[], func?: (value: any, row: Row) => Json): this;
   addSelectColumn(column: string, tables?: string | string[]): string;
   addSelectColumnFromAlias(column: string, tableAliases: string | string[]): string;
+  addSelectCoalesce(tableQualifiedColumns: [string, string][], columnAlias?: string): string;
+  addSelectCoalesceFromAlias(aliasQualifiedColumns: [string, string][], columnAlias?: string): string;
 }
 
 export interface SqlQueryRootResolver extends SqlQueryResolver {

@@ -1,10 +1,11 @@
 import { GraphQLResolveInfo } from 'graphql';
 import Knex from 'knex';
-import { GraphQLVisitorInfo, TypeVisitors, WalkOptions, walkSelections } from '../visitor';
+import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
 import {
   ConnectionArgs,
   Json,
   JsonObject,
+  Row,
   RowsQueryBuilder,
   SqlConnectionResolver,
   SqlQueryResolver,
@@ -62,9 +63,9 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this.baseResolver.addSelectExpression(expr, alias);
   }
 
-  public addColumnField(field: string, column: string, table?: string, func?: (value: any) => Json): this {
+  public addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this {
     const alias = this.addSelectColumn(column, table);
-    this.addField(field, func ? row => func(row[alias]) : row => row[alias]);
+    this.addField(field, func ? row => func(row[alias], row) : row => row[alias]);
     return this;
   }
 

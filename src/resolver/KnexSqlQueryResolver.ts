@@ -3,7 +3,7 @@ import { GraphQLResolveInfo } from 'graphql';
 import Knex, { AliasDict } from 'knex';
 import { snakeCase } from 'snake-case';
 import { Memoize } from 'typescript-memoize';
-import { GraphQLVisitorInfo, TypeVisitors, WalkOptions, walkSelections } from '../visitor';
+import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
 import {
   ConnectionArgs,
   Json,
@@ -13,8 +13,8 @@ import {
   SqlConnectionResolver,
   SqlQueryResolver,
   SqlResolverOptions,
-  SqlUnionQueryResolver,
-  SqlTypeVisitors
+  SqlTypeVisitors,
+  SqlUnionQueryResolver
 } from './api';
 import { ColumnRestriction } from './ColumnRestriction';
 import { applyCursorFilter, makeCursor } from './cursor';
@@ -193,9 +193,9 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return Array.from(this.joinTables.values(), jt => jt.join);
   }
 
-  public addColumnField(field: string, column: string, table?: string, func?: (value: any) => Json): this {
+  public addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this {
     const alias = this.addSelectColumn(column, table);
-    this.addField(field, func ? row => func(row[alias]) : row => row[alias]);
+    this.addField(field, func ? row => func(row[alias], row) : row => row[alias]);
     return this;
   }
 

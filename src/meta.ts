@@ -18,3 +18,11 @@ export interface UnionMetadata extends BaseTypeMetadata {
 export type TypeMetadata = TableMetadata | UnionMetadata;
 
 export type TypeMetadataMap = Record<string, TypeMetadata>;
+
+export function isTableMetadata(meta: TypeMetadata): meta is TableMetadata {
+  return 'tableName' in meta;
+}
+
+export function getTableNames(meta: TypeMetadata): string[] {
+  return isTableMetadata(meta) ? [meta.tableName] : Object.values(meta.tableIds).map(m => m.tableName);
+}
