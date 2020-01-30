@@ -8,6 +8,7 @@ import {
   RowsQueryBuilder,
   SqlConnectionResolver,
   SqlQueryResolver,
+  SqlTypeVisitors,
   SqlUnionQueryResolver
 } from './api';
 import { BaseSqlQueryResolver } from './internal';
@@ -25,6 +26,10 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
   ) {
     super(defaultTable, tableAlias, outerResolver);
     this.baseResolver = baseResolver;
+  }
+
+  public get visitors(): SqlTypeVisitors {
+    return this.baseResolver.visitors;
   }
 
   public getBaseResolver(): BaseSqlQueryResolver {

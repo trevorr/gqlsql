@@ -1,41 +1,45 @@
-import { GraphQLResolveInfo } from 'graphql';
+import { GraphQLResolveInfo, getNamedType } from 'graphql';
 import { TypeVisitors, WalkOptions, walkSelections } from '../visitor';
 import { GraphQLVisitorInfo } from '../visitor/GraphQLVisitorInfo';
-import { SqlConnectionResolver, SqlEdgesResolver, SqlPageInfoResolver, SqlQueryResolver } from './api';
+import { SqlConnectionResolver, SqlEdgeResolver, SqlPageInfoResolver, SqlQueryResolver, SqlTypeVisitors } from './api';
 import { ConnectionVisitors } from './ConnectionVisitors';
 import { FieldResolver } from './FieldResolver';
 import { FetchResult } from './internal';
 import { KnexSqlQueryResolver } from './KnexSqlQueryResolver';
-import { SqlEdgesResolverImpl } from './SqlEdgesResolverImpl';
+import { SqlEdgeResolverImpl } from './SqlEdgeResolverImpl';
 import { SqlPageInfoResolverImpl } from './SqlPageInfoResolverImpl';
 
 export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver> extends FieldResolver<FetchResult>
   implements SqlConnectionResolver {
   protected readonly nodeResolver: TNR;
-  protected readonly edgesResolver: SqlEdgesResolverImpl;
+  protected readonly edgeResolver: SqlEdgeResolverImpl;
 
   public constructor(nodeResolver: TNR) {
     super();
     this.nodeResolver = nodeResolver;
-    this.edgesResolver = new SqlEdgesResolverImpl(nodeResolver, nodeResolver);
+    this.edgeResolver = new SqlEdgeResolverImpl(nodeResolver, nodeResolver);
+  }
+
+  public get visitors(): SqlTypeVisitors {
+    return this.nodeResolver.visitors;
   }
 
   public getNodeResolver(): TNR {
     return this.nodeResolver;
   }
 
-  public getEdgesResolver(): SqlEdgesResolver {
-    return this.edgesResolver;
+  public getEdgesResolver(): SqlEdgeResolver {
+    return this.edgeResolver;
   }
 
-  public addEdges(field: string): SqlEdgesResolver {
+  public addEdges(field: string): SqlEdgeResolver {
     this.addField(field, (data, parentRowMap, fetchMap) =>
       data.rows.map(row => {
         parentRowMap.set(this.nodeResolver, row);
-        return this.edgesResolver.buildResult(row, parentRowMap, fetchMap);
+        return this.edgeResolver.buildResult(row, parentRowMap, fetchMap);
       })
     );
-    return this.edgesResolver;
+    return this.edgeResolver;
   }
 
   public addNodes(field: string): SqlQueryResolver {
@@ -68,7 +72,8 @@ export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver> ext
     if (config) {
       config(this.nodeResolver);
     }
-    walkSelections(this, info, visitors, ConnectionVisitors, options);
+    const fieldVisitors = this.visitors.connection[getNamedType(info.returnType).name] || ConnectionVisitors;
+    walkSelections(this, info, visitors, fieldVisitors, options);
     return this;
   }
 }

@@ -3,18 +3,28 @@ import { execute, GraphQLResolveInfo } from 'graphql';
 import gql from 'graphql-tag';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
-import { FieldVisitorDefault, FieldVisitors, TypeVisitors, walk, walkSelections } from '../../src/visitor';
+import {
+  FieldVisitorDefault,
+  FieldVisitors,
+  ShallowFieldVisitors,
+  TypeVisitors,
+  walk,
+  walkSelections
+} from '../../src/visitor';
 import query from './query';
 import { getExecutableSchema } from './schema';
 
 chai.use(sinonChai);
 
-type Context = {};
+class Context {}
+class ConnectionContext extends Context {}
+class EdgeContext {}
+class UnionContext extends Context {}
 
 describe('walk', () => {
   it('walks automatically with returned context', async () => {
     const root = {};
-    const context: Context = {};
+    const context = new Context();
     const fieldVisitor = sinon.spy();
     const friendVisitors: FieldVisitors<Context> = {
       id(ctx, info) {
@@ -99,6 +109,110 @@ describe('walk', () => {
     expect(fieldVisitor).to.have.been.not.calledWith('pageInfo');
     expect(fieldVisitor).to.have.been.calledWith('totalCount');
     expect(fieldVisitor).to.have.callCount(9);
+  });
+
+  it('walks explicit context types', async () => {
+    const root = {};
+    const context = new Context();
+    const connectionContext = new ConnectionContext();
+    const edgeContext = new EdgeContext();
+    const unionContext = new UnionContext();
+    const fieldVisitor = sinon.spy();
+    const friendVisitors: ShallowFieldVisitors<UnionContext, Context> = {
+      id(ctx, info) {
+        expect(ctx).to.be.an.instanceOf(UnionContext);
+        fieldVisitor(info.fieldName);
+        return ctx;
+      },
+      [FieldVisitorDefault]: walk
+    };
+    const edgeVisitors: ShallowFieldVisitors<EdgeContext, Context> = {
+      cursor(ctx, info): void {
+        expect(ctx).to.be.an.instanceOf(EdgeContext);
+        fieldVisitor(info.fieldName);
+      },
+      node(ctx, info, visitors): void {
+        expect(ctx).to.be.an.instanceOf(EdgeContext);
+        fieldVisitor(info.fieldName);
+        walkSelections(unionContext, info, visitors, friendVisitors);
+      }
+    };
+    const connectionVisitors: ShallowFieldVisitors<ConnectionContext, Context> = {
+      edges(ctx, info, visitors) {
+        expect(ctx).to.be.an.instanceOf(ConnectionContext);
+        fieldVisitor(info.fieldName);
+        walkSelections(edgeContext, info, visitors, edgeVisitors);
+      },
+      nodes(ctx, info, visitors) {
+        expect(ctx).to.be.an.instanceOf(ConnectionContext);
+        fieldVisitor(info.fieldName);
+        walkSelections(unionContext, info, visitors, friendVisitors);
+      },
+      pageInfo(ctx, info) {
+        expect(ctx).to.be.an.instanceOf(ConnectionContext);
+        fieldVisitor(info.fieldName);
+      },
+      totalCount(ctx, info) {
+        expect(ctx).to.be.an.instanceOf(ConnectionContext);
+        expect(info.path.key).to.eql('count');
+        fieldVisitor(info.fieldName);
+      }
+    };
+    const personVisitors: FieldVisitors<Context> = {
+      firstName(ctx, info) {
+        expect(ctx).to.be.an.instanceOf(Context);
+        fieldVisitor(info.fieldName);
+        return ctx;
+      },
+      lastName(ctx, info) {
+        expect(ctx).to.be.an.instanceOf(Context);
+        fieldVisitor(info.fieldName);
+        return ctx;
+      },
+      friends(ctx, info, visitors) {
+        expect(ctx).to.be.an.instanceOf(Context);
+        fieldVisitor(info.fieldName);
+        walkSelections(connectionContext, info, visitors, connectionVisitors);
+      }
+    };
+    const petVisitors: FieldVisitors<Context> = {
+      name(ctx, info) {
+        expect(ctx).to.be.an.instanceOf(Context);
+        fieldVisitor(info.fieldName);
+        return ctx;
+      }
+    };
+    const visitors: TypeVisitors<Context> = {
+      Person: personVisitors,
+      Pet: petVisitors
+    };
+    const resolvers = {
+      Query: {
+        person(parent: {}, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
+          expect(parent).to.equal(root);
+          expect(args.id).to.equal(5);
+          walk(context, info, visitors);
+        }
+      }
+    };
+    const result = await execute(getExecutableSchema(resolvers), query, root, context, {
+      skipId: false,
+      includeCount: true
+    });
+    expect(result.errors).to.be.undefined;
+
+    expect(fieldVisitor).to.have.been.calledWith('id');
+    expect(fieldVisitor).to.have.been.calledWith('firstName');
+    expect(fieldVisitor).to.have.been.calledWith('lastName');
+    expect(fieldVisitor).to.have.been.calledWith('name');
+    expect(fieldVisitor).to.have.been.calledWith('friends');
+    expect(fieldVisitor).to.have.been.calledWith('edges');
+    expect(fieldVisitor).to.have.been.calledWith('cursor');
+    expect(fieldVisitor).to.have.been.calledWith('node');
+    expect(fieldVisitor).to.have.been.not.calledWith('nodes');
+    expect(fieldVisitor).to.have.been.not.calledWith('pageInfo');
+    expect(fieldVisitor).to.have.been.calledWith('totalCount');
+    expect(fieldVisitor).to.have.callCount(11);
   });
 
   const dummyNodeResolvers = {

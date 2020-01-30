@@ -1,7 +1,7 @@
 import { ShallowFieldVisitors, walkSelections } from '../visitor';
-import { SqlEdgesResolver, SqlQueryResolver } from './api';
+import { SqlEdgeResolver, SqlQueryResolver } from './api';
 
-export const EdgesVisitors: ShallowFieldVisitors<SqlEdgesResolver, SqlQueryResolver> = {
+export const EdgeVisitors: ShallowFieldVisitors<SqlEdgeResolver, SqlQueryResolver> = {
   cursor(context, info): void {
     context.addCursor(info.fieldName);
   },

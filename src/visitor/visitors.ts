@@ -15,15 +15,19 @@ export type ShallowVisitor<TContext = any, TNestedContext = any> = (
 ) => TNestedContext | void;
 
 export interface FieldVisitors<TContext = any> {
-  [key: string]: RecursiveVisitor<TContext> | undefined;
-  [FieldVisitorDefault]?: RecursiveVisitor<TContext>;
+  readonly [key: string]: RecursiveVisitor<TContext> | undefined;
+  readonly [FieldVisitorDefault]?: RecursiveVisitor<TContext>;
 }
 
 export interface ShallowFieldVisitors<TContext = any, TNestedContext = any> {
-  [key: string]: ShallowVisitor<TContext, TNestedContext> | undefined;
-  [FieldVisitorDefault]?: ShallowVisitor<TContext, TNestedContext>;
+  readonly [key: string]: ShallowVisitor<TContext, TNestedContext> | undefined;
+  readonly [FieldVisitorDefault]?: ShallowVisitor<TContext, TNestedContext>;
 }
 
 export interface TypeVisitors<TContext = any> {
-  [key: string]: FieldVisitors<TContext> | undefined;
+  readonly [key: string]: FieldVisitors<TContext> | undefined;
+}
+
+export interface ShallowTypeVisitors<TContext = any, TNestedContext = any> {
+  readonly [key: string]: ShallowFieldVisitors<TContext, TNestedContext> | undefined;
 }

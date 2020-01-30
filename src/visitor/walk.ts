@@ -21,14 +21,18 @@ export interface WalkOptions {
 
 export function walk<TContext>(
   context: TContext,
-  info: GraphQLResolveInfo,
+  info: GraphQLResolveInfo | GraphQLVisitorInfo,
   visitors: TypeVisitors<TContext>,
   options?: WalkOptions
 ): TContext {
-  const { fieldNodes, ...rest } = info;
   const fieldVisitors = visitors[info.parentType.name];
-  for (const fieldNode of fieldNodes) {
-    walkField(context, { ...rest, fieldNode }, visitors, fieldVisitors, options);
+  if ('fieldNode' in info) {
+    walkField(context, info, visitors, fieldVisitors, options);
+  } else {
+    const { fieldNodes, ...rest } = info;
+    for (const fieldNode of fieldNodes) {
+      walkField(context, { ...rest, fieldNode }, visitors, fieldVisitors, options);
+    }
   }
   return context;
 }

@@ -13,7 +13,8 @@ import {
   SqlConnectionResolver,
   SqlQueryResolver,
   SqlResolverOptions,
-  SqlUnionQueryResolver
+  SqlUnionQueryResolver,
+  SqlTypeVisitors
 } from './api';
 import { ColumnRestriction } from './ColumnRestriction';
 import { applyCursorFilter, makeCursor } from './cursor';
@@ -54,10 +55,19 @@ interface JoinTable {
   referenced: boolean;
 }
 
+const DefaultTypeVisitors: SqlTypeVisitors = {
+  object: {},
+  union: {},
+  connection: {},
+  edge: {},
+  pageInfo: {}
+};
+
 const DefaultResolverOptions: SqlResolverOptions = {
   defaultLimit: 20,
   maxLimit: 100,
   sqlExecutor: getDefaultSqlExecutor(),
+  visitors: {},
   userInputError: Error
 };
 
@@ -67,6 +77,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   private readonly baseQuery: RowsQueryBuilder;
   private readonly args: ConnectionArgs;
   protected readonly options: SqlResolverOptions;
+  public readonly visitors: SqlTypeVisitors;
   private readonly selects = new Map<string, Select>();
   protected readonly orderByColumns = new Map<string, OrderByColumn>();
   private readonly orderByColumnNames: string[] = [];
@@ -88,6 +99,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     this.baseQuery = knex(baseTable);
     this.args = args;
     this.options = Object.assign({}, DefaultResolverOptions, options);
+    this.visitors = Object.assign({}, DefaultTypeVisitors, options?.visitors);
     this.reverseOrder = args.last != null && args.first == null;
   }
 

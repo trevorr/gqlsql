@@ -1,6 +1,6 @@
 import { GraphQLResolveInfo } from 'graphql';
 import Knex, { QueryBuilder } from 'knex';
-import { TypeVisitors, WalkOptions } from '../visitor';
+import { ShallowTypeVisitors, TypeVisitors, WalkOptions } from '../visitor';
 import { GraphQLVisitorInfo } from '../visitor/GraphQLVisitorInfo';
 import { EquiJoinSpec, JoinSpec, UnionJoinSpec } from './JoinSpec';
 
@@ -47,7 +47,16 @@ export type Row = Record<string, any>;
 
 export type RowsQueryBuilder = QueryBuilder<any, Row[]>;
 
+export interface SqlTypeVisitors {
+  readonly object: TypeVisitors<SqlQueryResolver>;
+  readonly union: ShallowTypeVisitors<SqlUnionQueryResolver, SqlQueryResolver>;
+  readonly connection: ShallowTypeVisitors<SqlConnectionResolver, SqlQueryResolver>;
+  readonly edge: ShallowTypeVisitors<SqlEdgeResolver, SqlQueryResolver>;
+  readonly pageInfo: ShallowTypeVisitors<SqlPageInfoResolver, void>;
+}
+
 export interface SqlFieldResolver {
+  readonly visitors: SqlTypeVisitors;
   addConstantField(field: string, value: Json): this;
   addColumnField(field: string, column: string, table?: string, func?: (value: any) => Json): this;
   addExpressionField(field: string, expr: string | Knex.Raw, alias?: string): this;
@@ -88,9 +97,10 @@ export interface SqlQueryRootResolver extends SqlQueryResolver {
 }
 
 export interface SqlConnectionResolver {
+  readonly visitors: SqlTypeVisitors;
   getNodeResolver(): SqlQueryResolver;
-  getEdgesResolver(): SqlEdgesResolver;
-  addEdges(field: string): SqlEdgesResolver;
+  getEdgesResolver(): SqlEdgeResolver;
+  addEdges(field: string): SqlEdgeResolver;
   addNodes(field: string): SqlQueryResolver;
   addPageInfo(field: string): SqlPageInfoResolver;
   addTotalCount(field: string): void;
@@ -106,7 +116,7 @@ export interface SqlConnectionRootResolver extends SqlConnectionResolver {
   execute(): Promise<Partial<Connection<JsonObject>>>;
 }
 
-export interface SqlEdgesResolver extends SqlFieldResolver {
+export interface SqlEdgeResolver extends SqlFieldResolver {
   addCursor(field: string): void;
   addNode(field: string): SqlQueryResolver;
 }
@@ -126,6 +136,7 @@ export interface SqlResolverOptions {
   defaultLimit: number;
   maxLimit: number;
   sqlExecutor: SqlExecutor;
+  visitors: Partial<SqlTypeVisitors>;
   userInputError: { new (message: string): any };
 }
 
