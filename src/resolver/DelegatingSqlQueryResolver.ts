@@ -1,5 +1,13 @@
 import Knex from 'knex';
-import { ConnectionArgs, Json, JsonObject, RowsQueryBuilder, SqlConnectionResolver, SqlQueryResolver } from './api';
+import {
+  ConnectionArgs,
+  Json,
+  JsonObject,
+  RowsQueryBuilder,
+  SqlConnectionResolver,
+  SqlQueryResolver,
+  SqlUnionQueryResolver
+} from './api';
 import { BaseSqlQueryResolver } from './internal';
 import { EquiJoinSpec, isEquiJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
 import { TableResolver } from './TableResolver';
@@ -65,7 +73,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return resolver;
   }
 
-  public addUnionField(field: string, joins: UnionJoinSpec[]): SqlQueryResolver {
+  public addUnionField(field: string, joins: UnionJoinSpec[]): SqlUnionQueryResolver {
     const resolver = this.baseResolver.createUnionResolver(this, this.resolveJoins(joins), field);
     this.addField(field, resolver.buildResult.bind(resolver));
     return resolver;

@@ -76,6 +76,7 @@ export interface SqlQueryResolver extends SqlFieldResolver {
 }
 
 export interface SqlUnionQueryResolver extends SqlQueryResolver {
+  getTypeNameFromRow(row: Row): string | null;
   addColumnField(field: string, column: string, tables?: string | string[], func?: (value: any) => Json): this;
   addSelectColumn(column: string, tables?: string | string[]): string;
   addSelectColumnFromAlias(column: string, tableAliases: string | string[]): string;

@@ -10,7 +10,8 @@ import {
   RowsQueryBuilder,
   SqlConnectionResolver,
   SqlQueryResolver,
-  SqlResolverOptions
+  SqlResolverOptions,
+  SqlUnionQueryResolver
 } from './api';
 import { ColumnRestriction } from './ColumnRestriction';
 import { applyCursorFilter, makeCursor } from './cursor';
@@ -228,7 +229,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return new UnionSqlQueryResolver(this, outerResolver, tables);
   }
 
-  public addUnionField(field: string, joins: UnionJoinSpec[]): SqlQueryResolver {
+  public addUnionField(field: string, joins: UnionJoinSpec[]): SqlUnionQueryResolver {
     const resolver = this.createUnionResolver(this, this.resolveJoins(joins), field);
     this.addField(field, resolver.buildResult.bind(resolver));
     return resolver;

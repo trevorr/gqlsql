@@ -8,7 +8,8 @@ import {
   SqlConnectionResolver,
   SqlQueryResolver,
   SqlResolverFactory,
-  SqlResolverOptions
+  SqlResolverOptions,
+  SqlUnionQueryResolver
 } from './api';
 import { EquiJoinSpec, JoinSpec, UnionJoinSpec } from './JoinSpec';
 import { TableResolver } from './TableResolver';
@@ -47,9 +48,9 @@ export interface SqlContainingQueryResolver extends SqlQueryResolver, ResultBuil
   getBaseResolver(): BaseSqlQueryResolver;
 }
 
-export interface SqlObjectQueryResolver extends SqlQueryResolver, ResultBuilder<Row> {}
+export interface SqlQueryResolverRBR extends SqlQueryResolver, ResultBuilder<Row> {}
 
-export interface SqlUnionQueryResolver extends SqlQueryResolver, ResultBuilder<Row> {}
+export interface SqlUnionQueryResolverRBR extends SqlUnionQueryResolver, ResultBuilder<Row> {}
 
 export interface BaseSqlQueryResolver extends SqlQueryResolver, ResultBuilder<Row> {
   getKnex(): Knex;
@@ -68,8 +69,8 @@ export interface BaseSqlQueryResolver extends SqlQueryResolver, ResultBuilder<Ro
     join: JoinSpec | undefined,
     defaultTable: string,
     field: string
-  ): SqlObjectQueryResolver;
-  createUnionResolver(outerResolver: TableResolver, joins: UnionJoinSpec[], field: string): SqlUnionQueryResolver;
+  ): SqlQueryResolverRBR;
+  createUnionResolver(outerResolver: TableResolver, joins: UnionJoinSpec[], field: string): SqlUnionQueryResolverRBR;
 }
 
 export interface InternalSqlResolverFactory extends SqlResolverFactory {

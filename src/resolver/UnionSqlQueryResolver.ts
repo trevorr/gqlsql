@@ -1,14 +1,15 @@
+import { Row, SqlUnionQueryResolver } from './api';
 import { DelegatingSqlQueryResolver } from './DelegatingSqlQueryResolver';
 import { BaseSqlQueryResolver } from './internal';
-import { TableResolver } from './TableResolver';
 import { UnionJoinSpec } from './JoinSpec';
+import { TableResolver } from './TableResolver';
 
 export interface UnionTableInfo {
   join: UnionJoinSpec;
   testColumn: string;
 }
 
-export class UnionSqlQueryResolver extends DelegatingSqlQueryResolver {
+export class UnionSqlQueryResolver extends DelegatingSqlQueryResolver implements SqlUnionQueryResolver {
   public constructor(
     baseResolver: BaseSqlQueryResolver,
     outerResolver: TableResolver | undefined,
@@ -18,14 +19,16 @@ export class UnionSqlQueryResolver extends DelegatingSqlQueryResolver {
     for (const table of tables) {
       this.addTableAlias(table.join.toTable, table.join.toAlias!);
     }
-    this.addDerivedField('__typename', row => {
-      for (const info of tables) {
-        if (row[info.testColumn] != null) {
-          return info.join.typeName;
-        }
+    this.addDerivedField('__typename', row => this.getTypeNameFromRow(row));
+  }
+
+  public getTypeNameFromRow(row: Row): string | null {
+    for (const info of this.tables) {
+      if (row[info.testColumn] != null) {
+        return info.join.typeName;
       }
-      return null;
-    });
+    }
+    return null;
   }
 
   public addSelectColumn(
