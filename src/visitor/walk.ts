@@ -33,37 +33,44 @@ export function walk<TContext>(
   return context;
 }
 
+function walkField<TContext, TNestedContext>(
+  context: TContext,
+  info: GraphQLVisitorInfo,
+  visitors: TypeVisitors<TNestedContext>,
+  fieldVisitors: ShallowFieldVisitors<TContext, TNestedContext>,
+  options?: WalkOptions
+): TContext;
+
 function walkField<TContext>(
   context: TContext,
   info: GraphQLVisitorInfo,
   visitors: TypeVisitors<TContext>,
   fieldVisitors?: FieldVisitors<TContext>,
   options?: WalkOptions
-): TContext {
-  let skipChildren = false;
-  let childContext = context;
+): TContext;
 
+function walkField<TContext, TNestedContext>(
+  context: TContext,
+  info: GraphQLVisitorInfo,
+  visitors: TypeVisitors<TNestedContext>,
+  fieldVisitors?: ShallowFieldVisitors<TContext, TNestedContext>,
+  options?: WalkOptions
+): TContext {
   if (fieldVisitors) {
     const beforeVisitor = fieldVisitors[info.fieldName];
     if (beforeVisitor) {
       const result = beforeVisitor(context, info, visitors);
-      if (result === undefined) {
-        skipChildren = true;
-      } else {
-        childContext = result;
+      if (result !== undefined) {
+        walkSelections(result, info, visitors, undefined, options);
       }
     }
-  }
 
-  if (!skipChildren) {
-    walkSelections(childContext, info, visitors, undefined, options);
-  }
-
-  if (fieldVisitors) {
     const afterVisitor = fieldVisitors[info.fieldName + 'After'];
     if (afterVisitor) {
       afterVisitor(context, info, visitors);
     }
+  } else {
+    walkSelections(context, info, (visitors as unknown) as TypeVisitors<TContext>, undefined, options);
   }
   return context;
 }
@@ -72,7 +79,7 @@ export function walkSelections<TContext, TNestedContext>(
   context: TContext,
   info: GraphQLVisitorInfo | GraphQLResolveInfo,
   visitors: TypeVisitors<TNestedContext>,
-  fieldVisitors?: ShallowFieldVisitors<TContext, TNestedContext>,
+  fieldVisitors: ShallowFieldVisitors<TContext, TNestedContext>,
   options?: WalkOptions
 ): void;
 
@@ -81,6 +88,14 @@ export function walkSelections<TContext>(
   info: GraphQLVisitorInfo | GraphQLResolveInfo,
   visitors: TypeVisitors<TContext>,
   fieldVisitors?: FieldVisitors<TContext>,
+  options?: WalkOptions
+): void;
+
+export function walkSelections<TContext, TNestedContext>(
+  context: TContext,
+  info: GraphQLVisitorInfo | GraphQLResolveInfo,
+  visitors: TypeVisitors<TNestedContext>,
+  fieldVisitors?: ShallowFieldVisitors<TContext, TNestedContext>,
   options?: WalkOptions
 ): void {
   if ('fieldNode' in info) {
@@ -92,14 +107,14 @@ export function walkSelections<TContext>(
         selectionSet,
         info,
         visitors,
-        fieldVisitors,
+        fieldVisitors!,
         options
       );
     }
   } else {
     const { fieldNodes, ...rest } = info;
     for (const fieldNode of fieldNodes) {
-      walkSelections(context, { fieldNode, ...rest }, visitors, fieldVisitors, options);
+      walkSelections(context, { fieldNode, ...rest }, visitors, fieldVisitors!, options);
     }
   }
 }
@@ -110,7 +125,7 @@ function walkSelectionSet<TContext, TNestedContext>(
   selectionSet: SelectionSetNode,
   info: GraphQLVisitorInfo,
   visitors: TypeVisitors<TNestedContext>,
-  fieldVisitors?: ShallowFieldVisitors<TContext, TNestedContext>,
+  fieldVisitors: ShallowFieldVisitors<TContext, TNestedContext>,
   options?: WalkOptions
 ): void;
 
@@ -121,6 +136,16 @@ function walkSelectionSet<TContext>(
   info: GraphQLVisitorInfo,
   visitors: TypeVisitors<TContext>,
   fieldVisitors?: FieldVisitors<TContext>,
+  options?: WalkOptions
+): void;
+
+function walkSelectionSet<TContext, TNestedContext>(
+  context: TContext,
+  parentType: GraphQLCompositeType,
+  selectionSet: SelectionSetNode,
+  info: GraphQLVisitorInfo,
+  visitors: TypeVisitors<TNestedContext>,
+  fieldVisitors?: ShallowFieldVisitors<TContext, TNestedContext>,
   options?: WalkOptions
 ): void {
   for (const selection of selectionSet.selections) {
@@ -146,7 +171,7 @@ function walkSelectionSet<TContext>(
           throw new Error(`Cannot resolve fragment type '${typeName}'`);
         }
         if (!options || !options.fragmentPredicate || options.fragmentPredicate(fragmentType)) {
-          walkSelectionSet(context, fragmentType, fragment.selectionSet, info, visitors, fieldVisitors, options);
+          walkSelectionSet(context, fragmentType, fragment.selectionSet, info, visitors, fieldVisitors!, options);
         }
         break;
       }
@@ -162,7 +187,7 @@ function walkSelectionSet<TContext>(
           fragmentType = parentType;
         }
         if (!options || !options.fragmentPredicate || options.fragmentPredicate(fragmentType)) {
-          walkSelectionSet(context, fragmentType, selection.selectionSet, info, visitors, fieldVisitors, options);
+          walkSelectionSet(context, fragmentType, selection.selectionSet, info, visitors, fieldVisitors!, options);
         }
         break;
       }
@@ -178,7 +203,12 @@ function walkSelectionSet<TContext>(
             key: getResponseKey(selection)
           }
         };
-        walkField(context, fieldInfo, visitors, fieldVisitors || visitors[parentType.name]);
+        if (fieldVisitors) {
+          walkField(context, fieldInfo, visitors, fieldVisitors);
+        } else {
+          const v = (visitors as unknown) as TypeVisitors<TContext>;
+          walkField(context, fieldInfo, v, v[parentType.name]);
+        }
       }
     }
   }

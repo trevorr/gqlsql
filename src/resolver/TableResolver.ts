@@ -1,8 +1,4 @@
 import { PropertyDumper } from 'dumpable';
-import { GraphQLResolveInfo } from 'graphql';
-import { TypeVisitors, WalkOptions, walkSelections } from '../visitor';
-import { GraphQLVisitorInfo } from '../visitor/GraphQLVisitorInfo';
-import { SqlQueryResolver } from './api';
 import { FieldResolver } from './FieldResolver';
 import { isEquiJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
 
@@ -65,19 +61,6 @@ export class TableResolver extends FieldResolver {
       throw new Error(`Table "${table}" already aliased as "${alias}"`);
     }
     this.tableAliases.set(table, alias);
-  }
-
-  public walk(
-    info: GraphQLVisitorInfo | GraphQLResolveInfo,
-    visitors: TypeVisitors<SqlQueryResolver>,
-    config?: (resolver: this) => void,
-    options?: WalkOptions
-  ): this {
-    if (config) {
-      config(this);
-    }
-    walkSelections(this, info, visitors, undefined, options);
-    return this;
   }
 
   public dumpProperties(d: PropertyDumper): void {

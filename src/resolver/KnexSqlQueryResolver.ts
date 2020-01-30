@@ -1,7 +1,9 @@
 import { PropertyDumper } from 'dumpable';
+import { GraphQLResolveInfo } from 'graphql';
 import Knex, { AliasDict } from 'knex';
 import { snakeCase } from 'snake-case';
 import { Memoize } from 'typescript-memoize';
+import { GraphQLVisitorInfo, TypeVisitors, WalkOptions, walkSelections } from '../visitor';
 import {
   ConnectionArgs,
   Json,
@@ -424,6 +426,19 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   protected buildTotalCountQuery(query: RowsQueryBuilder): RowsQueryBuilder {
     return query.count({ totalCount: '*' });
+  }
+
+  public walk(
+    info: GraphQLVisitorInfo | GraphQLResolveInfo,
+    visitors: TypeVisitors<SqlQueryResolver>,
+    config?: (resolver: this) => void,
+    options?: WalkOptions
+  ): this {
+    if (config) {
+      config(this);
+    }
+    walkSelections(this, info, visitors, undefined, options);
+    return this;
   }
 
   public dumpProperties(d: PropertyDumper): void {

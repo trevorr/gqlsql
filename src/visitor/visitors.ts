@@ -10,7 +10,7 @@ export type ShallowVisitor<TContext = any, TNestedContext = any> = (
   context: TContext,
   info: GraphQLVisitorInfo,
   visitors: TypeVisitors<TNestedContext>
-) => void;
+) => TNestedContext | void;
 
 export interface FieldVisitors<TContext = any> {
   [key: string]: RecursiveVisitor<TContext> | undefined;

@@ -250,7 +250,7 @@ describe('walkSelections', () => {
     };
     const resolvers = {
       Query: {
-        node(_parent: unknown, _args: unknown, context: unknown, info: GraphQLResolveInfo) {
+        node(_parent: unknown, _args: unknown, context: Context, info: GraphQLResolveInfo) {
           walkSelections(context, info, visitors, undefined, {
             fragmentPredicate(type) {
               return type.name === 'Person';

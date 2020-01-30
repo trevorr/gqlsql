@@ -1,4 +1,6 @@
+import { GraphQLResolveInfo } from 'graphql';
 import Knex from 'knex';
+import { GraphQLVisitorInfo, TypeVisitors, WalkOptions, walkSelections } from '../visitor';
 import {
   ConnectionArgs,
   Json,
@@ -95,6 +97,19 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public addOrderByAlias(columnAlias: string, descending?: boolean): this {
     this.baseResolver.addOrderByAlias(columnAlias, descending);
+    return this;
+  }
+
+  public walk(
+    info: GraphQLVisitorInfo | GraphQLResolveInfo,
+    visitors: TypeVisitors<SqlQueryResolver>,
+    config?: (resolver: this) => void,
+    options?: WalkOptions
+  ): this {
+    if (config) {
+      config(this);
+    }
+    walkSelections(this, info, visitors, undefined, options);
     return this;
   }
 }
