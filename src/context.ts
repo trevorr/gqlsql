@@ -1,25 +1,13 @@
 import Knex from 'knex';
-import { getXidTable, TableMetadata, TypeMetadata } from './meta';
+import { TypeMetadata } from './meta';
+import { getQidTable } from './qid';
 import { createFactory, getDefaultSqlExecutor, SqlExecutor, SqlResolverFactory, SqlResolverOptions } from './resolver';
-
-export interface GetIdForSidOptions {
-  idColumn?: string;
-  sidColumn?: string;
-  trx?: Knex.Transaction;
-}
-
-export interface GetIdForXidOptions {
-  idColumn?: string;
-  ridColumn?: string;
-  trx?: Knex.Transaction;
-}
 
 export interface SqlResolverContext {
   knex: Knex;
   sqlExecutor: SqlExecutor;
   resolverFactory: SqlResolverFactory;
-  getIdForSid(field: string, sid: string, meta: TypeMetadata, options?: GetIdForSidOptions): Promise<string>;
-  getIdForXid(field: string, xid: string, meta: TypeMetadata, options?: GetIdForXidOptions): Promise<string>;
+  getIdForXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): Promise<string>;
   extend<Props extends {}>(props: Props): this & Props;
 }
 
@@ -32,39 +20,31 @@ class SqlResolverContextImpl implements SqlResolverContext {
     this.resolverFactory = createFactory(knex, defaultOptions);
   }
 
-  public async getIdForSid(
-    field: string,
-    sid: string,
-    meta: TableMetadata,
-    options: GetIdForSidOptions = {}
-  ): Promise<string> {
-    const { trx = this.knex, idColumn = 'id', sidColumn = 'sid' } = options;
-    const query = trx(meta.tableName)
-      .select(idColumn)
-      .where(sidColumn, sid);
+  public async getIdForXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): Promise<string> {
+    let objectId, tableMeta, xidColumn;
+    if ('stringIdColumn' in meta) {
+      objectId = xid;
+      tableMeta = meta;
+      xidColumn = meta.stringIdColumn;
+    } else {
+      [objectId, tableMeta] = getQidTable(xid, meta);
+      xidColumn = tableMeta.randomIdColumn;
+    }
+    if (!xidColumn) {
+      throw new Error(`External ID column not found in metadata for ${tableMeta.typeName}`);
+    }
+    const { idColumns } = tableMeta;
+    if (!idColumns || idColumns.length !== 1) {
+      throw new Error(`Internal ID column not found in metadata for ${tableMeta.typeName}`);
+    }
+    const query = (trx || this.knex)(tableMeta.tableName)
+      .select(idColumns[0])
+      .where(xidColumn, objectId);
     const rows = await this.sqlExecutor.execute<any>(query);
     if (!rows.length) {
-      throw new Error(`Unknown ${meta.typeName} ID "${sid}" for "${field}"`);
+      throw new Error(`Unknown ${meta.typeName} ID "${xid}"`);
     }
-    return rows[0][idColumn];
-  }
-
-  public async getIdForXid(
-    field: string,
-    xid: string,
-    meta: TypeMetadata,
-    options: GetIdForXidOptions = {}
-  ): Promise<string> {
-    const { trx = this.knex, idColumn = 'id', ridColumn = 'rid' } = options;
-    const [objectId, tableName] = getXidTable(xid, meta);
-    const query = trx(tableName)
-      .select(idColumn)
-      .where(ridColumn, objectId);
-    const rows = await this.sqlExecutor.execute<any>(query);
-    if (!rows.length) {
-      throw new Error(`Unknown ${meta.typeName} ID "${xid}" for "${field}"`);
-    }
-    return rows[0][idColumn];
+    return rows[0][idColumns[0]];
   }
 
   public extend<Props extends {}>(props: Props): this & Props {
