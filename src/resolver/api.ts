@@ -78,7 +78,6 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   addOrderByAlias(columnAlias: string, descending?: boolean): void;
   walk(
     info: GraphQLVisitorInfo | GraphQLResolveInfo,
-    visitors: TypeVisitors<SqlQueryResolver>,
     config?: (resolver: this) => void,
     options?: WalkOptions
   ): this;
@@ -106,7 +105,6 @@ export interface SqlConnectionResolver {
   addTotalCount(field: string): void;
   walk(
     info: GraphQLVisitorInfo | GraphQLResolveInfo,
-    visitors: TypeVisitors<SqlQueryResolver>,
     config?: (nodeResolver: SqlQueryResolver) => void,
     options?: WalkOptions
   ): this;

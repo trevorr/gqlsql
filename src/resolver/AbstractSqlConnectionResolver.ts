@@ -65,7 +65,6 @@ export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver> ext
 
   public walk(
     info: GraphQLVisitorInfo | GraphQLResolveInfo,
-    visitors: TypeVisitors<SqlQueryResolver>,
     config?: (nodeResolver: SqlQueryResolver) => void,
     options?: WalkOptions
   ): this {
@@ -73,7 +72,7 @@ export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver> ext
       config(this.nodeResolver);
     }
     const fieldVisitors = this.visitors.connection[getNamedType(info.returnType).name] || ConnectionVisitors;
-    walkSelections(this, info, visitors, fieldVisitors, options);
+    walkSelections(this, info, this.visitors.object, fieldVisitors, options);
     return this;
   }
 }

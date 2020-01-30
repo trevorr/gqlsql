@@ -442,14 +442,13 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public walk(
     info: GraphQLVisitorInfo | GraphQLResolveInfo,
-    visitors: TypeVisitors<SqlQueryResolver>,
     config?: (resolver: this) => void,
     options?: WalkOptions
   ): this {
     if (config) {
       config(this);
     }
-    walkSelections(this, info, visitors, undefined, options);
+    walkSelections(this, info, this.visitors.object, undefined, options);
     return this;
   }
 
