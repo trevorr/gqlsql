@@ -1,3 +1,5 @@
+import { getNamedType, GraphQLResolveInfo } from 'graphql';
+import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
 import { Row, SqlUnionQueryResolver } from './api';
 import { DelegatingSqlQueryResolver } from './DelegatingSqlQueryResolver';
 import { BaseSqlQueryResolver } from './internal';
@@ -64,6 +66,23 @@ export class UnionSqlQueryResolver extends DelegatingSqlQueryResolver implements
 
   public addOrderBy(column: string, tables?: string | string[], descending = false): this {
     this.baseResolver.addOrderBy(this.addSelectColumn(column, tables), undefined, descending);
+    return this;
+  }
+
+  public walk(
+    info: GraphQLVisitorInfo | GraphQLResolveInfo,
+    config?: (resolver: this) => void,
+    options?: WalkOptions
+  ): this {
+    if (config) {
+      config(this);
+    }
+    const fieldVisitors = this.visitors.union[getNamedType(info.returnType).name];
+    if (fieldVisitors) {
+      walkSelections(this, info, this.visitors.object, fieldVisitors, options);
+    } else {
+      walkSelections(this, info, this.visitors.object, undefined, options);
+    }
     return this;
   }
 }
