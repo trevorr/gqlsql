@@ -1,8 +1,8 @@
 import { isTableMetadata, TableMetadata, TypeMetadata } from './meta';
 import { SqlFieldResolver, SqlUnionQueryResolver } from './resolver';
 
-export function joinQid(objectId: string, tableId: string | undefined): string {
-  return tableId ? `${tableId}_${objectId}` : objectId;
+export function joinQid(randomId: string, tableId: string | undefined): string {
+  return tableId ? `${tableId}_${randomId}` : randomId;
 }
 
 export function splitQid(qid: string): [string, string?] {
@@ -10,8 +10,16 @@ export function splitQid(qid: string): [string, string?] {
   return parts.length > 1 ? [parts[1], parts[0]] : [parts[0]];
 }
 
-export function getQidTable(qid: string, meta: TypeMetadata): [string, TableMetadata] {
-  const [objectId, tableId] = splitQid(qid);
+export function getRidFromQid(qid: string, meta?: TableMetadata): string {
+  const [randomId, tableId] = splitQid(qid);
+  if (tableId && meta && meta.tableId && tableId !== meta.tableId) {
+    throw new Error(`Unexpected prefix for ${meta.typeName} ID "${qid}"`);
+  }
+  return randomId;
+}
+
+export function resolveQid(qid: string, meta: TypeMetadata): [string, TableMetadata] {
+  const [randomId, tableId] = splitQid(qid);
   let tableMeta;
   if (isTableMetadata(meta)) {
     if (tableId && meta.tableId && tableId !== meta.tableId) {
@@ -26,7 +34,7 @@ export function getQidTable(qid: string, meta: TypeMetadata): [string, TableMeta
       throw new Error(`Unknown prefix in ${meta.typeName} ID "${qid}"`);
     }
   }
-  return [objectId, tableMeta];
+  return [randomId, tableMeta];
 }
 
 export function addQidField<T extends SqlFieldResolver>(resolver: T, field: string, meta: TableMetadata): T;

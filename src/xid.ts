@@ -1,6 +1,6 @@
 import Knex from 'knex';
 import { TableMetadata, TypeMetadata } from './meta';
-import { getQidTable } from './qid';
+import { resolveQid } from './qid';
 import { Row, SqlExecutor } from './resolver';
 
 export class XidQueryBuilder {
@@ -19,7 +19,7 @@ export class XidQueryBuilder {
       oid = xid;
       oidColumn = meta.stringIdColumn;
     } else {
-      [oid, this.tableMeta] = getQidTable(xid, meta);
+      [oid, this.tableMeta] = resolveQid(xid, meta);
       oidColumn = this.tableMeta.randomIdColumn;
     }
     if (!oidColumn) {
@@ -65,6 +65,14 @@ export class XidQueryBuilder {
 
   public async update(data: object | object[]): Promise<number> {
     return await this.sqlExecutor.execute<number>(this.query.update(data));
+  }
+
+  public async updateOrThrow(data: object | object[]): Promise<number> {
+    const count = this.update(data);
+    if (!count) {
+      throw new Error(`Unknown ${this.tableMeta.typeName} ID "${this.xid}"`);
+    }
+    return count;
   }
 
   public async del(): Promise<number> {
