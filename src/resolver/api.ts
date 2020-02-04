@@ -33,14 +33,15 @@ export interface Connection<T> {
   totalCount: number;
 }
 
-export interface LimitArgs {
+export interface ConnectionArgs {
   first?: number | null;
+  after?: string | null;
   last?: number | null;
+  before?: string | null;
 }
 
-export interface ConnectionArgs extends LimitArgs {
-  after?: string | null;
-  before?: string | null;
+export interface ResolverArgs extends ConnectionArgs {
+  [key: string]: any;
 }
 
 export type Row = Record<string, any>;
@@ -63,13 +64,17 @@ export interface SqlFieldResolver {
   addDerivedField(field: string, func: (row: Row) => Json): this;
   addObjectField(field: string, join?: JoinSpec): SqlQueryResolver;
   addUnionField(field: string, joins: UnionJoinSpec[]): SqlUnionQueryResolver;
-  addConnection(field: string, join: EquiJoinSpec, args: ConnectionArgs): SqlConnectionResolver;
+  addConnection(field: string, join: EquiJoinSpec, args: ResolverArgs): SqlConnectionResolver;
   qualifyColumn(column: string, table?: string): string;
 }
+
+export type SqlQueryResolverConfig<T extends SqlQueryResolver = SqlQueryResolver> = (resolver: T) => void;
 
 export interface SqlQueryResolver extends SqlFieldResolver {
   getKnex(): Knex;
   getBaseQuery(): RowsQueryBuilder;
+  getArguments(): ResolverArgs;
+  hasTable(table: string): boolean;
   addTable(join: JoinSpec): this;
   addSelectColumn(column: string, table?: string): string;
   addSelectColumnFromAlias(column: string, tableAlias: string): string;
@@ -78,14 +83,19 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   addOrderByAlias(columnAlias: string, descending?: boolean): void;
   walk(
     info: GraphQLVisitorInfo | GraphQLResolveInfo,
-    config?: (resolver: this) => void,
+    config?: SqlQueryResolverConfig<this>,
     options?: WalkOptions
   ): this;
 }
 
 export interface SqlUnionQueryResolver extends SqlQueryResolver {
   getTypeNameFromRow(row: Row): string | null;
-  addColumnField(field: string, column: string, tables?: string | string[], func?: (value: any, row: Row) => Json): this;
+  addColumnField(
+    field: string,
+    column: string,
+    tables?: string | string[],
+    func?: (value: any, row: Row) => Json
+  ): this;
   addSelectColumn(column: string, tables?: string | string[]): string;
   addSelectColumnFromAlias(column: string, tableAliases: string | string[]): string;
   addSelectCoalesce(tableQualifiedColumns: [string, string][], columnAlias?: string): string;
@@ -105,11 +115,7 @@ export interface SqlConnectionResolver {
   addNodes(field: string): SqlQueryResolver;
   addPageInfo(field: string): SqlPageInfoResolver;
   addTotalCount(field: string): void;
-  walk(
-    info: GraphQLVisitorInfo | GraphQLResolveInfo,
-    config?: (nodeResolver: SqlQueryResolver) => void,
-    options?: WalkOptions
-  ): this;
+  walk(info: GraphQLVisitorInfo | GraphQLResolveInfo, config?: SqlQueryResolverConfig, options?: WalkOptions): this;
 }
 
 export interface SqlConnectionRootResolver extends SqlConnectionResolver {
@@ -141,10 +147,10 @@ export interface SqlResolverOptions {
 }
 
 export interface SqlResolverFactory {
-  createQuery(table: string, args?: ConnectionArgs, options?: Partial<SqlResolverOptions>): SqlQueryRootResolver;
+  createQuery(table: string, args?: ResolverArgs, options?: Partial<SqlResolverOptions>): SqlQueryRootResolver;
   createConnection(
     table: string,
-    args?: ConnectionArgs,
+    args?: ResolverArgs,
     options?: Partial<SqlResolverOptions>
   ): SqlConnectionRootResolver;
 }

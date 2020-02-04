@@ -5,9 +5,9 @@ import { snakeCase } from 'snake-case';
 import { Memoize } from 'typescript-memoize';
 import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
 import {
-  ConnectionArgs,
   Json,
   JsonObject,
+  ResolverArgs,
   Row,
   RowsQueryBuilder,
   SqlConnectionResolver,
@@ -75,7 +75,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   protected readonly resolverFactory: InternalSqlResolverFactory;
   protected readonly knex: Knex;
   private readonly baseQuery: RowsQueryBuilder;
-  private readonly args: ConnectionArgs;
+  private readonly args: ResolverArgs;
   protected readonly options: SqlResolverOptions;
   public readonly visitors: SqlTypeVisitors;
   private readonly selects = new Map<string, Select>();
@@ -90,7 +90,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     resolverFactory: InternalSqlResolverFactory,
     knex: Knex,
     baseTable: string,
-    args: ConnectionArgs = {},
+    args: ResolverArgs = {},
     options?: Partial<SqlResolverOptions>
   ) {
     super(baseTable, baseTable);
@@ -109,6 +109,10 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public getBaseQuery(): RowsQueryBuilder {
     return this.baseQuery;
+  }
+
+  public getArguments(): ResolverArgs {
+    return this.args;
   }
 
   public addSelectColumn(column: string, table = this.defaultTable): string {
@@ -252,14 +256,14 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   public createConnectionResolver(
     outerResolver: TableResolver & SqlQueryResolver,
     join: EquiJoinSpec,
-    args: ConnectionArgs
+    args: ResolverArgs
   ): SqlConnectionChildResolver {
     const resolver = this.resolverFactory.createChildConnection(this, outerResolver, join, args);
     this.childResolvers.push(resolver.getNodeResolver());
     return resolver;
   }
 
-  public addConnection(field: string, join: EquiJoinSpec, args: ConnectionArgs): SqlConnectionResolver {
+  public addConnection(field: string, join: EquiJoinSpec, args: ResolverArgs): SqlConnectionResolver {
     const resolver = this.createConnectionResolver(this, this.resolveJoin(join), args);
     this.addField(
       field,

@@ -1,14 +1,26 @@
 import Knex from 'knex';
 import { TypeMetadata } from './meta';
 import { createFactory, getDefaultSqlExecutor, SqlExecutor, SqlResolverFactory, SqlResolverOptions } from './resolver';
-import { XidQueryBuilder } from './xid';
+import { XidQueryBuilder } from './XidQueryBuilder';
+import { XidsQueryBuilder } from './XidsQueryBuilder';
 
 export interface SqlResolverContext {
   knex: Knex;
   sqlExecutor: SqlExecutor;
   resolverFactory: SqlResolverFactory;
   forXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): XidQueryBuilder;
+  forXids(xids: string[], meta: TypeMetadata, trx?: Knex.Transaction): XidsQueryBuilder;
   getIdForXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): Promise<string>;
+  getIdForXid(
+    xid: string | null | undefined,
+    meta: TypeMetadata,
+    trx?: Knex.Transaction
+  ): Promise<string | null | undefined>;
+  getIdsForXids(
+    xids: string[] | null | undefined,
+    meta: TypeMetadata,
+    trx?: Knex.Transaction
+  ): Promise<string[] | null | undefined>;
   extend<Props extends {}>(props: Props): this & Props;
 }
 
@@ -25,8 +37,30 @@ class SqlResolverContextImpl implements SqlResolverContext {
     return new XidQueryBuilder(trx || this.knex, this.sqlExecutor, xid, meta);
   }
 
-  public async getIdForXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): Promise<string> {
-    return this.forXid(xid, meta, trx).getId();
+  public forXids(xids: string[], meta: TypeMetadata, trx?: Knex.Transaction): XidsQueryBuilder {
+    return new XidsQueryBuilder(trx || this.knex, this.sqlExecutor, xids, meta);
+  }
+
+  public async getIdForXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): Promise<string>;
+  public async getIdForXid(
+    xid: string | null | undefined,
+    meta: TypeMetadata,
+    trx?: Knex.Transaction
+  ): Promise<string | null | undefined>;
+  public async getIdForXid(
+    xid: string | null | undefined,
+    meta: TypeMetadata,
+    trx?: Knex.Transaction
+  ): Promise<string | null | undefined> {
+    return xid && this.forXid(xid, meta, trx).getId();
+  }
+
+  public async getIdsForXids(
+    xids: string[] | null | undefined,
+    meta: TypeMetadata,
+    trx?: Knex.Transaction
+  ): Promise<string[] | null | undefined> {
+    return xids && xids.length > 0 ? this.forXids(xids, meta, trx).getIds() : undefined;
   }
 
   public extend<Props extends {}>(props: Props): this & Props {

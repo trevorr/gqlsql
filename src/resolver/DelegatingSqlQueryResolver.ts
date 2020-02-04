@@ -2,9 +2,9 @@ import { GraphQLResolveInfo } from 'graphql';
 import Knex from 'knex';
 import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
 import {
-  ConnectionArgs,
   Json,
   JsonObject,
+  ResolverArgs,
   Row,
   RowsQueryBuilder,
   SqlConnectionResolver,
@@ -43,6 +43,10 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public getBaseQuery(): RowsQueryBuilder {
     return this.baseResolver.getBaseQuery();
+  }
+
+  public getArguments(): ResolverArgs {
+    return this.baseResolver.getArguments();
   }
 
   public addTable(join: JoinSpec): this {
@@ -87,7 +91,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return resolver;
   }
 
-  public addConnection(field: string, join: EquiJoinSpec, args: ConnectionArgs): SqlConnectionResolver {
+  public addConnection(field: string, join: EquiJoinSpec, args: ResolverArgs): SqlConnectionResolver {
     const resolver = this.baseResolver.createConnectionResolver(this, this.resolveJoin(join), args);
     this.addField(
       field,

@@ -1,5 +1,5 @@
 import { QueryBuilder } from 'knex';
-import { ConnectionArgs, Row, RowsQueryBuilder, SqlQueryResolver, SqlResolverOptions } from './api';
+import { ResolverArgs, Row, RowsQueryBuilder, SqlQueryResolver, SqlResolverOptions } from './api';
 import { ContainingSqlQueryResolver } from './ContainingSqlQueryResolver';
 import { FetchMap, FetchResult, InternalSqlResolverFactory, SqlChildQueryResolver } from './internal';
 import { EquiJoinSpec, getConnectingKey, getFromKey, getToKey, isEquiJoin, isSameKey, JoinSpec } from './JoinSpec';
@@ -21,7 +21,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     parentResolver: KnexSqlQueryResolver,
     outerResolver: SqlQueryResolver,
     join: EquiJoinSpec,
-    args?: ConnectionArgs,
+    args?: ResolverArgs,
     options?: Partial<SqlResolverOptions>
   ) {
     super(resolverFactory, parentResolver.getKnex(), join.toTable, args, options);

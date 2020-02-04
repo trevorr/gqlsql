@@ -18,13 +18,15 @@ export class TableResolver extends FieldResolver {
     return this.defaultTable;
   }
 
+  public hasTable(table: string): boolean {
+    return this.tableAliases.has(table) || (this.outerResolver != null && this.outerResolver.hasTable(table));
+  }
+
   public findTableAlias(table: string): string | undefined {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    let resolver: TableResolver | undefined = this;
-    let alias;
-    do {
-      alias = resolver.tableAliases.get(table);
-    } while (!alias && (resolver = resolver.outerResolver));
+    let alias = this.tableAliases.get(table);
+    if (!alias && this.outerResolver != null) {
+      alias = this.outerResolver.findTableAlias(table);
+    }
     return alias;
   }
 

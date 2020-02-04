@@ -2,8 +2,8 @@ import Debug from 'debug';
 import Knex from 'knex';
 import {
   Connection,
-  ConnectionArgs,
   JsonObject,
+  ResolverArgs,
   Row,
   SqlConnectionResolver,
   SqlQueryResolver,
@@ -62,7 +62,7 @@ export interface BaseSqlQueryResolver extends SqlQueryResolver, ResultBuilder<Ro
   createConnectionResolver(
     outerResolver: TableResolver & SqlQueryResolver,
     join: EquiJoinSpec,
-    args: ConnectionArgs
+    args: ResolverArgs
   ): SqlConnectionChildResolver;
   createObjectResolver(
     outerResolver: TableResolver,
@@ -78,7 +78,7 @@ export interface InternalSqlResolverFactory extends SqlResolverFactory {
     parentResolver: BaseSqlQueryResolver,
     outerResolver: SqlQueryResolver,
     join: EquiJoinSpec,
-    args: ConnectionArgs,
+    args: ResolverArgs,
     options?: Partial<SqlResolverOptions>
   ): SqlConnectionChildResolver;
 }

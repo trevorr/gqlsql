@@ -1,7 +1,7 @@
 import Knex from 'knex';
 import {
-  ConnectionArgs,
   JsonObject,
+  ResolverArgs,
   Row,
   RowsQueryBuilder,
   SqlQueryResolver,
@@ -18,7 +18,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
     resolverFactory: InternalSqlResolverFactory,
     knex: Knex,
     baseTable: string,
-    args?: ConnectionArgs,
+    args?: ResolverArgs,
     options?: Partial<SqlResolverOptions>
   ) {
     super(resolverFactory, knex, baseTable, args, options);

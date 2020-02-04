@@ -1,5 +1,5 @@
 import Knex from 'knex';
-import { ConnectionArgs, SqlQueryResolver, SqlResolverFactory, SqlResolverOptions } from './api';
+import { ResolverArgs, SqlQueryResolver, SqlResolverFactory, SqlResolverOptions } from './api';
 import { ChildSqlConnectionResolver } from './ChildSqlConnectionResolver';
 import { ChildSqlQueryResolver } from './ChildSqlQueryResolver';
 import { BaseSqlQueryResolver, InternalSqlResolverFactory, SqlConnectionChildResolver } from './internal';
@@ -11,17 +11,13 @@ import { RootSqlQueryResolver } from './RootSqlQueryResolver';
 class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
   public constructor(private readonly knex: Knex, private readonly defaultOptions?: Partial<SqlResolverOptions>) {}
 
-  public createQuery(
-    table: string,
-    args?: ConnectionArgs,
-    options?: Partial<SqlResolverOptions>
-  ): RootSqlQueryResolver {
+  public createQuery(table: string, args?: ResolverArgs, options?: Partial<SqlResolverOptions>): RootSqlQueryResolver {
     return new RootSqlQueryResolver(this, this.knex, table, args, Object.assign({}, this.defaultOptions, options));
   }
 
   public createConnection(
     table: string,
-    args?: ConnectionArgs,
+    args?: ResolverArgs,
     options?: Partial<SqlResolverOptions>
   ): RootSqlConnectionResolver {
     return new RootSqlConnectionResolver(this.createQuery(table, args, options));
@@ -31,7 +27,7 @@ class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
     parentResolver: BaseSqlQueryResolver,
     outerResolver: SqlQueryResolver,
     join: EquiJoinSpec,
-    args: ConnectionArgs,
+    args: ResolverArgs,
     options?: Partial<SqlResolverOptions>
   ): SqlConnectionChildResolver {
     return new ChildSqlConnectionResolver(
