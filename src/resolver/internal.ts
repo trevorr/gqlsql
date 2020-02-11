@@ -53,8 +53,6 @@ export interface SqlQueryResolverRBR extends SqlQueryResolver, ResultBuilder<Row
 export interface SqlUnionQueryResolverRBR extends SqlUnionQueryResolver, ResultBuilder<Row> {}
 
 export interface BaseSqlQueryResolver extends SqlQueryResolver, ResultBuilder<Row> {
-  getKnex(): Knex;
-  getDefaultTable(): string;
   findTableAlias(table: string): string | undefined;
   getTableAlias(table: string): string;
   getCursor(row: Row): string;

@@ -76,6 +76,7 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   getKnex(): Knex;
   getBaseQuery(): RowsQueryBuilder;
   getArguments(): ResolverArgs;
+  getDefaultTable(): string;
   hasTable(table: string): boolean;
   addTable(join: JoinSpec): this;
   addSelectColumn(column: string, table?: string): string;
