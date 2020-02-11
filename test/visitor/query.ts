@@ -16,6 +16,10 @@ const query = gql`
             ...name
             ... on Pet {
               name
+              ...nodeId
+              ... on Friend {
+                friendId: id
+              }
             }
             __typename
           }
@@ -36,6 +40,9 @@ const query = gql`
   fragment name on Person {
     firstName
     lastName
+  }
+  fragment nodeId on Node {
+    id
   }
 `;
 

@@ -7,6 +7,8 @@ import {
   GraphQLOutputType,
   GraphQLResolveInfo,
   isCompositeType,
+  isInterfaceType,
+  isObjectType,
   isUnionType,
   SelectionSetNode,
   TypeNameMetaFieldDef
@@ -170,9 +172,12 @@ function walkSelectionSet<TContext, TNestedContext>(
         const fragmentName = selection.name.value;
         const fragment = info.fragments[fragmentName];
         const typeName = fragment.typeCondition.name.value;
-        const fragmentType = info.schema.getType(typeName);
+        let fragmentType = info.schema.getType(typeName);
         if (!fragmentType || !isCompositeType(fragmentType)) {
           throw new Error(`Cannot resolve fragment type '${typeName}'`);
+        }
+        if (isSupertypeOf(fragmentType, parentType)) {
+          fragmentType = parentType;
         }
         if (!options || !options.fragmentPredicate || options.fragmentPredicate(fragmentType)) {
           walkSelectionSet(context, fragmentType, fragment.selectionSet, info, visitors, fieldVisitors!, options);
@@ -186,6 +191,9 @@ function walkSelectionSet<TContext, TNestedContext>(
           fragmentType = info.schema.getType(typeName);
           if (!fragmentType || !isCompositeType(fragmentType)) {
             throw new Error(`Cannot resolve fragment type '${typeName}'`);
+          }
+          if (isSupertypeOf(fragmentType, parentType)) {
+            fragmentType = parentType;
           }
         } else {
           fragmentType = parentType;
@@ -216,6 +224,14 @@ function walkSelectionSet<TContext, TNestedContext>(
       }
     }
   }
+}
+
+function isSupertypeOf(superType: GraphQLCompositeType, subType: GraphQLCompositeType): boolean {
+  return (
+    isObjectType(subType) &&
+    ((isInterfaceType(superType) && subType.getInterfaces().includes(superType)) ||
+      (isUnionType(superType) && superType.getTypes().includes(subType)))
+  );
 }
 
 function getFieldType(containingType: GraphQLCompositeType, fieldName: string): GraphQLOutputType {

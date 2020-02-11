@@ -26,7 +26,7 @@ describe('walk', () => {
     const root = {};
     const context = new Context();
     const fieldVisitor = sinon.spy();
-    const friendVisitors: FieldVisitors<Context> = {
+    const nodeVisitors: FieldVisitors<Context> = {
       id(ctx, info) {
         expect(ctx).to.equal(context);
         fieldVisitor(info.fieldName);
@@ -34,6 +34,7 @@ describe('walk', () => {
       }
     };
     const personVisitors: FieldVisitors<Context> = {
+      ...nodeVisitors,
       firstName(ctx, info) {
         expect(ctx).to.equal(context);
         fieldVisitor(info.fieldName);
@@ -51,6 +52,7 @@ describe('walk', () => {
       }
     };
     const petVisitors: FieldVisitors<Context> = {
+      ...nodeVisitors,
       name(ctx, info) {
         expect(ctx).to.equal(context);
         fieldVisitor(info.fieldName);
@@ -79,7 +81,8 @@ describe('walk', () => {
       }
     };
     const visitors: TypeVisitors<Context> = {
-      Friend: friendVisitors,
+      Node: nodeVisitors,
+      Friend: nodeVisitors,
       Person: personVisitors,
       Pet: petVisitors,
       FriendConnection: connectionVisitors
@@ -108,7 +111,7 @@ describe('walk', () => {
     expect(fieldVisitor).to.have.been.not.calledWith('nodes');
     expect(fieldVisitor).to.have.been.not.calledWith('pageInfo');
     expect(fieldVisitor).to.have.been.calledWith('totalCount');
-    expect(fieldVisitor).to.have.callCount(9);
+    expect(fieldVisitor).to.have.callCount(12);
   });
 
   it('walks explicit context types', async () => {
@@ -212,7 +215,54 @@ describe('walk', () => {
     expect(fieldVisitor).to.have.been.not.calledWith('nodes');
     expect(fieldVisitor).to.have.been.not.calledWith('pageInfo');
     expect(fieldVisitor).to.have.been.calledWith('totalCount');
-    expect(fieldVisitor).to.have.callCount(11);
+    expect(fieldVisitor).to.have.callCount(13);
+  });
+
+  it('keeps most derived static type', async () => {
+    const root = {};
+    const context = new Context();
+    const nodeIdVisitor = sinon.spy();
+    const nodeVisitors: FieldVisitors<Context> = {
+      id: nodeIdVisitor
+    };
+    const friendIdVisitor = sinon.spy();
+    const friendVisitors: FieldVisitors<Context> = {
+      id: friendIdVisitor
+    };
+    const personIdVisitor = sinon.spy();
+    const personVisitors: FieldVisitors<Context> = {
+      id: personIdVisitor,
+      [FieldVisitorDefault]: ctx => ctx
+    };
+    const petIdVisitor = sinon.spy();
+    const petVisitors: FieldVisitors<Context> = {
+      id: petIdVisitor,
+      [FieldVisitorDefault]: ctx => ctx
+    };
+    const visitors: TypeVisitors<Context> = {
+      Node: nodeVisitors,
+      Friend: friendVisitors,
+      Person: personVisitors,
+      Pet: petVisitors
+    };
+    const resolvers = {
+      Query: {
+        person(parent: {}, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
+          expect(parent).to.equal(root);
+          expect(args.id).to.equal(5);
+          walk(context, info, visitors);
+        }
+      }
+    };
+    const result = await execute(getExecutableSchema(resolvers), query, root, context, {
+      skipId: false
+    });
+    expect(result.errors).to.be.undefined;
+
+    expect(nodeIdVisitor).to.have.callCount(0);
+    expect(friendIdVisitor).to.have.callCount(1);
+    expect(personIdVisitor).to.have.callCount(1);
+    expect(petIdVisitor).to.have.callCount(2);
   });
 
   const dummyNodeResolvers = {
