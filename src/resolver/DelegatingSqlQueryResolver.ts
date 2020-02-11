@@ -2,6 +2,7 @@ import { GraphQLResolveInfo } from 'graphql';
 import Knex from 'knex';
 import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
 import {
+  FetchFilter,
   Json,
   JsonObject,
   ResolverArgs,
@@ -107,6 +108,11 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public addOrderByAlias(columnAlias: string, descending?: boolean): this {
     this.baseResolver.addOrderByAlias(columnAlias, descending);
+    return this;
+  }
+
+  public addFetchFilter(filter: FetchFilter): this {
+    this.baseResolver.addFetchFilter(filter);
     return this;
   }
 

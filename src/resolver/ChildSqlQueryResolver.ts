@@ -1,3 +1,4 @@
+import { PropertyDumper } from 'dumpable';
 import { QueryBuilder } from 'knex';
 import { ResolverArgs, Row, RowsQueryBuilder, SqlQueryResolver, SqlResolverOptions } from './api';
 import { ContainingSqlQueryResolver } from './ContainingSqlQueryResolver';
@@ -5,7 +6,6 @@ import { FetchMap, FetchResult, InternalSqlResolverFactory, SqlChildQueryResolve
 import { EquiJoinSpec, getConnectingKey, getFromKey, getToKey, isEquiJoin, isSameKey, JoinSpec } from './JoinSpec';
 import { getKnexSelectColumn, KnexSqlQueryResolver } from './KnexSqlQueryResolver';
 import { findMap } from './util';
-import { PropertyDumper } from 'dumpable';
 
 type KeyValue = string | number;
 
@@ -66,7 +66,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
       WHERE partition_row <= ...;
     */
     const limit = this.getLimit();
-    if (Number.isInteger(limit)) {
+    if (Number.isInteger(limit) && !this.fetchFilters.length) {
       const { toTable, toColumns } = this.join;
       let sql = 'row_number() over (';
       let nextParam = 'partition by ??';
@@ -103,7 +103,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
   public async fetch(parentRows: Row[], fetchMap: FetchMap): Promise<void> {
     const { fromColumns, toColumns } = this.join;
     const parentKeys = getAllRowKeys(parentRows, fromColumns);
-    const rows = await this.fetchRows(parentKeys);
+    const rows = this.filterFetch(await this.fetchRows(parentKeys));
     const childrenPromise = this.fetchChildren(rows, fetchMap);
     const dataByParentKey = rows.reduce<Map<string, [KeyValue[], Row[]]>>((map, row) => {
       const keys = getRowKeys(row, toColumns);

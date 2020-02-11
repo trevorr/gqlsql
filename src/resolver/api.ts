@@ -48,6 +48,8 @@ export type Row = Record<string, any>;
 
 export type RowsQueryBuilder = QueryBuilder<any, Row[]>;
 
+export type FetchFilter = (rows: Row[]) => Row[];
+
 export interface SqlTypeVisitors {
   readonly object: TypeVisitors<SqlQueryResolver>;
   readonly union: ShallowTypeVisitors<SqlUnionQueryResolver, SqlQueryResolver>;
@@ -80,7 +82,8 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   addSelectColumnFromAlias(column: string, tableAlias: string): string;
   addSelectExpression(expr: string | Knex.Raw, alias?: string): string;
   addOrderBy(column: string, table?: string, descending?: boolean): this;
-  addOrderByAlias(columnAlias: string, descending?: boolean): void;
+  addOrderByAlias(columnAlias: string, descending?: boolean): this;
+  addFetchFilter(filter: FetchFilter): this;
   walk(
     info: GraphQLVisitorInfo | GraphQLResolveInfo,
     config?: SqlQueryResolverConfig<this>,

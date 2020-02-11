@@ -5,6 +5,7 @@ import { snakeCase } from 'snake-case';
 import { Memoize } from 'typescript-memoize';
 import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
 import {
+  FetchFilter,
   Json,
   JsonObject,
   ResolverArgs,
@@ -84,6 +85,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   protected readonly reverseOrder: boolean;
   private readonly joinTables = new Map<string, JoinTable>();
   private readonly childResolvers: SqlChildQueryResolver[] = [];
+  protected readonly fetchFilters: FetchFilter[] = [];
   protected needTotalCount = false;
 
   public constructor(
@@ -298,6 +300,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return this;
   }
 
+  public addFetchFilter(filter: FetchFilter): this {
+    this.fetchFilters.push(filter);
+    return this;
+  }
+
   public getCursor(row: Row): string {
     return makeCursor(row, this.orderByColumnNames);
   }
@@ -402,6 +409,10 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       limit = maxLimit;
     }
     return limit;
+  }
+
+  protected filterFetch(rows: Row[]): Row[] {
+    return this.fetchFilters.reduce((rows, filter) => filter(rows), rows);
   }
 
   protected buildFetchResult(rows: Row[]): FetchResult {

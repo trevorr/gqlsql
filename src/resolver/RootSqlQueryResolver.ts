@@ -27,7 +27,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
   protected applyPageLimit(query: RowsQueryBuilder): RowsQueryBuilder {
     if (this.lookup) {
       query.limit(1);
-    } else {
+    } else if (!this.fetchFilters.length) {
       const limit = this.getLimit();
       if (Number.isInteger(limit)) {
         query.limit(limit + 1);
@@ -38,7 +38,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
 
   public async fetch(): Promise<FetchMap> {
     const map = new Map<SqlQueryResolver, FetchLookup>();
-    const rows = await this.fetchRows();
+    const rows = this.filterFetch(await this.fetchRows());
     const result = this.buildFetchResult(rows);
     if (this.needTotalCount) {
       if (result.hasNextPage) {
