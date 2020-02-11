@@ -90,16 +90,20 @@ describe('resolveArguments', () => {
     expect(resolveArguments(info)).to.eql({});
   });
   it('handles actual arguments', () => {
-    const info = {
+    const info = ({
       fieldNode: {
         kind: 'Field',
         name: makeName('f'),
         arguments: [
           { kind: 'Argument', name: makeName('x'), value: { kind: 'IntValue', value: '42' } },
-          { kind: 'Argument', name: makeName('y'), value: { kind: 'StringValue', value: 'hi' } }
+          { kind: 'Argument', name: makeName('y'), value: { kind: 'StringValue', value: 'hi' } },
+          { kind: 'Argument', name: makeName('z'), value: { kind: 'Variable', name: makeName('foo') } }
         ]
-      } as FieldNode
-    } as GraphQLVisitorInfo;
-    expect(resolveArguments(info)).to.eql({ x: '42', y: 'hi' });
+      } as FieldNode,
+      variableValues: {
+        foo: 'bar'
+      }
+    } as any) as GraphQLVisitorInfo;
+    expect(resolveArguments(info)).to.eql({ x: '42', y: 'hi', z: 'bar' });
   });
 });

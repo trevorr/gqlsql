@@ -37,7 +37,7 @@ export function resolveArguments(info: GraphQLVisitorInfo): Record<string, any> 
   const args = info.fieldNode.arguments;
   if (args) {
     for (const arg of args) {
-      result[arg.name.value] = getValue(arg.value, info);
+      result[arg.name.value] = getValue(arg.value, info.variableValues);
     }
   }
   return result;
