@@ -146,6 +146,7 @@ export interface SqlResolverOptions {
   defaultLimit: number;
   maxLimit: number;
   sqlExecutor: SqlExecutor;
+  transaction?: Knex.Transaction;
   visitors: Partial<SqlTypeVisitors>;
   userInputError: { new (message: string): any };
 }

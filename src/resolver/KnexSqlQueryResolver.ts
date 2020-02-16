@@ -98,10 +98,10 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     super(baseTable, baseTable);
     this.resolverFactory = resolverFactory;
     this.knex = knex;
-    this.baseQuery = knex(baseTable);
     this.args = args;
     this.options = Object.assign({}, DefaultResolverOptions, options);
-    this.visitors = Object.assign({}, DefaultTypeVisitors, options?.visitors);
+    this.visitors = Object.assign({}, DefaultTypeVisitors, this.options.visitors);
+    this.baseQuery = (this.options.transaction || knex)(baseTable);
     this.reverseOrder = args.last != null && args.first == null;
   }
 

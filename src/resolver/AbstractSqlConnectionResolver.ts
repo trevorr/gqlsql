@@ -1,5 +1,5 @@
-import { GraphQLResolveInfo, getNamedType } from 'graphql';
-import { TypeVisitors, WalkOptions, walkSelections } from '../visitor';
+import { getNamedType, GraphQLResolveInfo } from 'graphql';
+import { WalkOptions, walkSelections } from '../visitor';
 import { GraphQLVisitorInfo } from '../visitor/GraphQLVisitorInfo';
 import { SqlConnectionResolver, SqlEdgeResolver, SqlPageInfoResolver, SqlQueryResolver, SqlTypeVisitors } from './api';
 import { ConnectionVisitors } from './ConnectionVisitors';
