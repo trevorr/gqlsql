@@ -21,6 +21,8 @@ export interface SqlResolverContext {
     meta: TypeMetadata,
     trx?: Knex.Transaction
   ): Promise<string[] | null | undefined>;
+  queryRow(query: Knex.QueryBuilder, description?: string): Promise<Record<string, any>>;
+  queryOptionalRow(query: Knex.QueryBuilder): Promise<Record<string, any>>;
   extend<Props extends {}>(props: Props): this & Props;
 }
 
@@ -61,6 +63,19 @@ class SqlResolverContextImpl implements SqlResolverContext {
     trx?: Knex.Transaction
   ): Promise<string[] | null | undefined> {
     return xids && xids.length > 0 ? this.forXids(xids, meta, trx).getIds() : undefined;
+  }
+
+  public async queryRow(query: Knex.QueryBuilder, description = 'Row'): Promise<Record<string, any>> {
+    const rows = await this.sqlExecutor.execute(query);
+    if (!rows.length) {
+      throw new Error(`${description} not found`);
+    }
+    return rows[0];
+  }
+
+  public async queryOptionalRow(query: Knex.QueryBuilder): Promise<Record<string, any>> {
+    const rows = await this.sqlExecutor.execute(query);
+    return rows.length ? rows[0] : {};
   }
 
   public extend<Props extends {}>(props: Props): this & Props {

@@ -6,7 +6,7 @@ export interface BaseTypeMetadata {
 export interface TableMetadata extends BaseTypeMetadata {
   tableId?: string;
   tableName: string;
-  idColumns?: string[];
+  idColumns: string[];
   randomIdColumn?: string;
   stringIdColumn?: string;
 }
