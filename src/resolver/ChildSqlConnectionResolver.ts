@@ -12,6 +12,6 @@ export class ChildSqlConnectionResolver extends AbstractSqlConnectionResolver<Ch
   ): Partial<Connection<JsonObject>> {
     const fetchLookup = fetchMap.get(this.nodeResolver);
     const data = fetchLookup!(parentRow);
-    return this.buildResult(data, parentRowMap, fetchMap);
+    return this.buildObject(data, parentRowMap, fetchMap);
   }
 }

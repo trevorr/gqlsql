@@ -70,7 +70,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
     const parentRowMap = new Map();
     return result.rows.map(row => {
       parentRowMap.set(this, row);
-      return this.buildResult(row, parentRowMap, fetchMap);
+      return this.buildObject(row, parentRowMap, fetchMap);
     });
   }
 

@@ -1,5 +1,4 @@
 import Debug from 'debug';
-import Knex from 'knex';
 import {
   Connection,
   JsonObject,
@@ -32,7 +31,7 @@ export type FetchMap = Map<SqlQueryResolver, FetchLookup>;
 export type ParentRowMap = Map<SqlQueryResolver, Row>;
 
 export interface ResultBuilder<T = Row> {
-  buildResult(data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap): JsonObject;
+  buildResult(data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap): JsonObject | null;
 }
 
 export interface SqlChildQueryResolver extends SqlQueryResolver {

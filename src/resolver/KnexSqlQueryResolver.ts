@@ -217,12 +217,15 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     defaultTable: string,
     field: string
   ): DelegatingSqlQueryResolver {
-    let tableAlias;
+    let tableAlias, testColumn;
     if (join) {
       tableAlias = this.addJoinAlias(join, snakeCase(field));
       defaultTable = getJoinTable(join);
+      if (join.toColumns && join.toColumns.length) {
+        testColumn = this.addSelectColumnFromAlias(join.toColumns[0], tableAlias);
+      }
     }
-    return new DelegatingSqlQueryResolver(this, outerResolver, defaultTable, tableAlias);
+    return new DelegatingSqlQueryResolver(this, outerResolver, defaultTable, tableAlias, testColumn);
   }
 
   public addObjectField(field: string, join?: JoinSpec): SqlQueryResolver {

@@ -9,6 +9,6 @@ export class RootSqlConnectionResolver extends AbstractSqlConnectionResolver<Roo
     const fetchLookup = fetchMap.get(this.nodeResolver);
     const result = fetchLookup!();
     const parentRowMap = new Map();
-    return this.buildResult(result, parentRowMap, fetchMap);
+    return this.buildObject(result, parentRowMap, fetchMap);
   }
 }

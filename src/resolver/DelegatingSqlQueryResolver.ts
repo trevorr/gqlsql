@@ -13,7 +13,7 @@ import {
   SqlTypeVisitors,
   SqlUnionQueryResolver
 } from './api';
-import { BaseSqlQueryResolver } from './internal';
+import { BaseSqlQueryResolver, FetchMap, ParentRowMap } from './internal';
 import { EquiJoinSpec, isEquiJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
 import { TableResolver } from './TableResolver';
 
@@ -24,7 +24,8 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     baseResolver: BaseSqlQueryResolver,
     outerResolver: TableResolver | undefined,
     defaultTable: string = (outerResolver || baseResolver).getDefaultTable(),
-    tableAlias: string = (outerResolver || baseResolver).getTableAlias(defaultTable)
+    tableAlias: string = (outerResolver || baseResolver).getTableAlias(defaultTable),
+    private readonly testColumn?: string
   ) {
     super(defaultTable, tableAlias, outerResolver);
     this.baseResolver = baseResolver;
@@ -114,6 +115,13 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
   public addFetchFilter(filter: FetchFilter): this {
     this.baseResolver.addFetchFilter(filter);
     return this;
+  }
+
+  public buildResult(data: Row, parentRowMap: ParentRowMap, fetchMap: FetchMap): JsonObject | null {
+    if (this.testColumn && data[this.testColumn] == null) {
+      return null;
+    }
+    return super.buildResult(data, parentRowMap, fetchMap);
   }
 
   public walk(

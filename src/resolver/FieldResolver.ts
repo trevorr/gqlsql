@@ -26,7 +26,7 @@ export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T>
     return this.addField(field, func);
   }
 
-  public buildResult(data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap): JsonObject {
+  protected buildObject(data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap): JsonObject {
     const result: JsonObject = {};
     for (const [field, sources] of this.fieldSources.entries()) {
       let value: Json = null;
@@ -42,6 +42,10 @@ export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T>
       result[field] = value;
     }
     return result;
+  }
+
+  public buildResult(data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap): JsonObject | null {
+    return this.buildObject(data, parentRowMap, fetchMap);
   }
 
   public dumpProperties(d: PropertyDumper): void {

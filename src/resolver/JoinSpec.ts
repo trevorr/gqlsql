@@ -19,6 +19,7 @@ export interface UnionJoinSpec extends EquiJoinSpec {
 
 export interface ProvidedJoinSpec {
   toAlias: string;
+  toColumns?: string[]; // optional test columns indicating a null object
 }
 
 export type JoinSpec = EquiJoinSpec | ProvidedJoinSpec;
