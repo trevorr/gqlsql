@@ -18,10 +18,10 @@ export class XidsQueryBuilder {
       throw new Error('ID array cannot be empty');
     }
     let oids, oidColumn;
-    if ('stringIdColumn' in meta) {
+    if ('wellKnownIdColumn' in meta) {
       this.tableMeta = meta;
       oids = xids;
-      oidColumn = meta.stringIdColumn;
+      oidColumn = meta.wellKnownIdColumn;
     } else {
       const resolved = xids.map(xid => resolveQid(xid, meta));
       this.tableMeta = resolved[0][1];

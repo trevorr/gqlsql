@@ -8,7 +8,7 @@ export interface TableMetadata extends BaseTypeMetadata {
   tableName: string;
   idColumns: string[];
   randomIdColumn?: string;
-  stringIdColumn?: string;
+  wellKnownIdColumn?: string;
 }
 
 export interface UnionMetadata extends BaseTypeMetadata {

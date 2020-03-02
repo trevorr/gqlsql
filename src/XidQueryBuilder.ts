@@ -14,10 +14,10 @@ export class XidQueryBuilder {
     meta: TypeMetadata
   ) {
     let oid, oidColumn;
-    if ('stringIdColumn' in meta) {
+    if ('wellKnownIdColumn' in meta) {
       this.tableMeta = meta;
       oid = xid;
-      oidColumn = meta.stringIdColumn;
+      oidColumn = meta.wellKnownIdColumn;
     } else {
       [oid, this.tableMeta] = resolveQid(xid, meta);
       oidColumn = this.tableMeta.randomIdColumn;
