@@ -1,6 +1,7 @@
 import Debug from 'debug';
 import {
   Connection,
+  Json,
   JsonObject,
   ResolverArgs,
   Row,
@@ -36,6 +37,8 @@ export interface ResultBuilder<T = Row> {
 
 export interface SqlChildQueryResolver extends SqlQueryResolver {
   fetch(parentRows: Row[], fetchMap: FetchMap): Promise<void>;
+  buildObjectList(fetchMap: FetchMap, parentRow: Row, parentRowMap: ParentRowMap): JsonObject[];
+  buildJsonList(fetchMap: FetchMap, parentRow: Row, func: (row: Row) => Json): Json[];
 }
 
 export interface SqlConnectionChildResolver extends SqlConnectionResolver {
@@ -56,6 +59,7 @@ export interface BaseSqlQueryResolver extends SqlQueryResolver, ResultBuilder<Ro
   getTableAlias(table: string): string;
   getCursor(row: Row): string;
   addJoinAlias(join: JoinSpec, aliasPrefix: string | null): string;
+  createChildResolver(outerResolver: TableResolver & SqlQueryResolver, join: EquiJoinSpec): SqlChildQueryResolver;
   createConnectionResolver(
     outerResolver: TableResolver & SqlQueryResolver,
     join: EquiJoinSpec,
@@ -71,6 +75,13 @@ export interface BaseSqlQueryResolver extends SqlQueryResolver, ResultBuilder<Ro
 }
 
 export interface InternalSqlResolverFactory extends SqlResolverFactory {
+  createChildQuery(
+    parentResolver: BaseSqlQueryResolver,
+    outerResolver: SqlQueryResolver,
+    join: EquiJoinSpec,
+    args?: ResolverArgs,
+    options?: Partial<SqlResolverOptions>
+  ): SqlChildQueryResolver;
   createChildConnection(
     parentResolver: BaseSqlQueryResolver,
     outerResolver: SqlQueryResolver,

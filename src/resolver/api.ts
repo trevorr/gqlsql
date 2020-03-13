@@ -60,13 +60,26 @@ export interface SqlTypeVisitors {
 
 export interface SqlFieldResolver {
   readonly visitors: SqlTypeVisitors;
+
   addConstantField(field: string, value: Json): this;
   addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this;
   addExpressionField(field: string, expr: string | Knex.Raw, alias?: string): this;
   addDerivedField(field: string, func: (row: Row) => Json): this;
   addObjectField(field: string, join?: JoinSpec): SqlQueryResolver;
   addUnionField(field: string, joins: UnionJoinSpec[]): SqlUnionQueryResolver;
-  addConnection(field: string, join: EquiJoinSpec, args: ResolverArgs): SqlConnectionResolver;
+
+  addColumnListField(
+    field: string,
+    join: EquiJoinSpec,
+    column: string,
+    func?: (value: any, row: Row) => Json
+  ): SqlQueryResolver;
+  addExpressionListField(field: string, join: EquiJoinSpec, expr: string | Knex.Raw, alias?: string): SqlQueryResolver;
+  addDerivedListField(field: string, join: EquiJoinSpec, func: (row: Row) => Json): SqlQueryResolver;
+  addObjectListField(field: string, join: EquiJoinSpec): SqlQueryResolver;
+
+  addConnectionField(field: string, join: EquiJoinSpec, args: ResolverArgs): SqlConnectionResolver;
+
   qualifyColumn(column: string, table?: string): string;
 }
 
@@ -76,15 +89,20 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   getKnex(): Knex;
   getBaseQuery(): RowsQueryBuilder;
   getArguments(): ResolverArgs;
+
   getDefaultTable(): string;
   hasTable(table: string): boolean;
   addTable(join: JoinSpec): this;
+
   addSelectColumn(column: string, table?: string): string;
   addSelectColumnFromAlias(column: string, tableAlias: string): string;
   addSelectExpression(expr: string | Knex.Raw, alias?: string): string;
+
   addOrderBy(column: string, table?: string, descending?: boolean): this;
   addOrderByAlias(columnAlias: string, descending?: boolean): this;
+
   addFetchFilter(filter: FetchFilter): this;
+
   walk(
     info: GraphQLVisitorInfo | GraphQLResolveInfo,
     config?: SqlQueryResolverConfig<this>,

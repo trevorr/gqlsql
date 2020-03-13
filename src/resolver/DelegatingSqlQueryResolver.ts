@@ -93,7 +93,49 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return resolver;
   }
 
-  public addConnection(field: string, join: EquiJoinSpec, args: ResolverArgs): SqlConnectionResolver {
+  public addColumnListField(
+    field: string,
+    join: EquiJoinSpec,
+    column: string,
+    func?: (value: any, row: Row) => Json
+  ): SqlQueryResolver {
+    const resolver = this.baseResolver.createChildResolver(this, this.resolveJoin(join));
+    const alias = resolver.addSelectColumn(column);
+    this.addField(field, (parentRow, _, fetchMap) =>
+      resolver.buildJsonList(fetchMap, parentRow, func ? row => func(row[alias], row) : row => row[alias])
+    );
+    return resolver;
+  }
+
+  public addExpressionListField(
+    field: string,
+    join: EquiJoinSpec,
+    expr: string | Knex.Raw,
+    alias?: string
+  ): SqlQueryResolver {
+    const resolver = this.baseResolver.createChildResolver(this, this.resolveJoin(join));
+    const actualAlias = resolver.addSelectExpression(expr, alias);
+    this.addField(field, (parentRow, _, fetchMap) =>
+      resolver.buildJsonList(fetchMap, parentRow, row => row[actualAlias])
+    );
+    return resolver;
+  }
+
+  public addDerivedListField(field: string, join: EquiJoinSpec, func: (row: Row) => Json): SqlQueryResolver {
+    const resolver = this.baseResolver.createChildResolver(this, this.resolveJoin(join));
+    this.addField(field, (parentRow, _, fetchMap) => resolver.buildJsonList(fetchMap, parentRow, func));
+    return resolver;
+  }
+
+  public addObjectListField(field: string, join: EquiJoinSpec): SqlQueryResolver {
+    const resolver = this.baseResolver.createChildResolver(this, this.resolveJoin(join));
+    this.addField(field, (parentRow, parentRowMap, fetchMap) =>
+      resolver.buildObjectList(fetchMap, parentRow, parentRowMap)
+    );
+    return resolver;
+  }
+
+  public addConnectionField(field: string, join: EquiJoinSpec, args: ResolverArgs): SqlConnectionResolver {
     const resolver = this.baseResolver.createConnectionResolver(this, this.resolveJoin(join), args);
     this.addField(
       field,

@@ -2,7 +2,7 @@ import Knex from 'knex';
 import { ResolverArgs, SqlQueryResolver, SqlResolverFactory, SqlResolverOptions } from './api';
 import { ChildSqlConnectionResolver } from './ChildSqlConnectionResolver';
 import { ChildSqlQueryResolver } from './ChildSqlQueryResolver';
-import { BaseSqlQueryResolver, InternalSqlResolverFactory, SqlConnectionChildResolver } from './internal';
+import { BaseSqlQueryResolver, InternalSqlResolverFactory } from './internal';
 import { EquiJoinSpec } from './JoinSpec';
 import { KnexSqlQueryResolver } from './KnexSqlQueryResolver';
 import { RootSqlConnectionResolver } from './RootSqlConnectionResolver';
@@ -23,23 +23,31 @@ class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
     return new RootSqlConnectionResolver(this.createQuery(table, args, options));
   }
 
+  public createChildQuery(
+    parentResolver: BaseSqlQueryResolver,
+    outerResolver: SqlQueryResolver,
+    join: EquiJoinSpec,
+    args?: ResolverArgs,
+    options?: Partial<SqlResolverOptions>
+  ): ChildSqlQueryResolver {
+    return new ChildSqlQueryResolver(
+      this,
+      parentResolver as KnexSqlQueryResolver,
+      outerResolver,
+      join,
+      args,
+      Object.assign({}, this.defaultOptions, options)
+    );
+  }
+
   public createChildConnection(
     parentResolver: BaseSqlQueryResolver,
     outerResolver: SqlQueryResolver,
     join: EquiJoinSpec,
     args: ResolverArgs,
     options?: Partial<SqlResolverOptions>
-  ): SqlConnectionChildResolver {
-    return new ChildSqlConnectionResolver(
-      new ChildSqlQueryResolver(
-        this,
-        parentResolver as KnexSqlQueryResolver,
-        outerResolver,
-        join,
-        args,
-        Object.assign({}, this.defaultOptions, options)
-      )
-    );
+  ): ChildSqlConnectionResolver {
+    return new ChildSqlConnectionResolver(this.createChildQuery(parentResolver, outerResolver, join, args, options));
   }
 }
 
