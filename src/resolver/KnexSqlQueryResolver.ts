@@ -80,6 +80,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   protected readonly options: SqlResolverOptions;
   public readonly visitors: SqlTypeVisitors;
   private readonly selects = new Map<string, Select>();
+  private distinct = false;
   protected readonly orderByColumns = new Map<string, OrderByColumn>();
   private readonly orderByColumnNames: string[] = [];
   protected readonly reverseOrder: boolean;
@@ -115,6 +116,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public getArguments(): ResolverArgs {
     return this.args;
+  }
+
+  public setDistinct(): this {
+    this.distinct = true;
+    return this;
   }
 
   public addSelectColumn(column: string, table = this.defaultTable): string {
@@ -416,11 +422,10 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   protected applySelect(query: RowsQueryBuilder): RowsQueryBuilder {
-    return query.select(
-      Array.from(this.selects.values()).map(select =>
-        isSelectColumn(select) ? getKnexSelectColumn(select) : getKnexSelectExpression(this.knex, select)
-      )
+    const columns = Array.from(this.selects.values(), select =>
+      isSelectColumn(select) ? getKnexSelectColumn(select) : getKnexSelectExpression(this.knex, select)
     );
+    return this.distinct ? query.distinct(columns) : query.select(columns);
   }
 
   protected applyOrderBy(query: RowsQueryBuilder): RowsQueryBuilder {

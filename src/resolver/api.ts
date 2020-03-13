@@ -94,6 +94,7 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   hasTable(table: string): boolean;
   addTable(join: JoinSpec): this;
 
+  setDistinct(): this;
   addSelectColumn(column: string, table?: string): string;
   addSelectColumnFromAlias(column: string, tableAlias: string): string;
   addSelectExpression(expr: string | Knex.Raw, alias?: string): string;

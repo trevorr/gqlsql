@@ -57,6 +57,11 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this;
   }
 
+  public setDistinct(): this {
+    this.baseResolver.setDistinct();
+    return this;
+  }
+
   public addSelectColumn(column: string, table = this.defaultTable): string {
     return this.baseResolver.addSelectColumnFromAlias(column, this.getTableAlias(table));
   }
