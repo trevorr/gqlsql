@@ -262,7 +262,8 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     outerResolver: TableResolver & SqlQueryResolver,
     join: EquiJoinSpec
   ): SqlChildQueryResolver {
-    const resolver = this.resolverFactory.createChildQuery(this, outerResolver, join);
+    const options = { defaultLimit: Infinity, maxLimit: Infinity }; // don't limit plain lists
+    const resolver = this.resolverFactory.createChildQuery(this, outerResolver, join, undefined, options);
     this.childResolvers.push(resolver);
     return resolver;
   }
