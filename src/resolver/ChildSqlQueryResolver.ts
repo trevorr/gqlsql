@@ -15,6 +15,8 @@ const WindowSubqueryAlias = 'windowed';
 export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlChildQueryResolver {
   private readonly parentResolver: KnexSqlQueryResolver;
   private readonly join: EquiJoinSpec;
+  private readonly fromSelects: string[] = [];
+  private readonly toSelects: string[] = [];
 
   public constructor(
     resolverFactory: InternalSqlResolverFactory,
@@ -28,8 +30,11 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     this.parentResolver = parentResolver;
     this.join = join;
     for (let i = 0; i < join.toColumns.length; ++i) {
-      outerResolver.addSelectColumn(join.fromColumns[i], join.fromTable);
-      this.addOrderBy(join.toColumns[i], join.toTable);
+      const fromSelect = outerResolver.addSelectColumn(join.fromColumns[i], join.fromTable);
+      this.fromSelects.push(fromSelect);
+      const toSelect = this.addSelectColumn(join.toColumns[i], join.toTable);
+      this.toSelects.push(toSelect);
+      this.addOrderByAlias(toSelect);
     }
   }
 
@@ -101,12 +106,11 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
   }
 
   public async fetch(parentRows: Row[], fetchMap: FetchMap): Promise<void> {
-    const { fromColumns, toColumns } = this.join;
-    const parentKeys = getAllRowKeys(parentRows, fromColumns);
+    const parentKeys = getAllRowKeys(parentRows, this.fromSelects);
     const rows = this.filterFetch(await this.fetchRows(parentKeys));
     const childrenPromise = this.fetchChildren(rows, fetchMap);
     const dataByParentKey = rows.reduce<Map<string, [KeyValue[], Row[]]>>((map, row) => {
-      const keys = getRowKeys(row, toColumns);
+      const keys = getRowKeys(row, this.toSelects);
       const keyString = makeKeyString(keys);
       let data = map.get(keyString);
       if (!data) {
@@ -131,7 +135,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     if (totalCountKeys.length > 0) {
       const totalCounts = await this.fetchTotalCounts(totalCountKeys);
       for (const row of totalCounts) {
-        const keys = getRowKeys(row, toColumns);
+        const keys = getRowKeys(row, this.toSelects);
         const keyString = makeKeyString(keys);
         const result = resultByParentKey.get(keyString);
         if (result) {
@@ -141,7 +145,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     }
     fetchMap.set(this, parentRow => {
       if (parentRow) {
-        const keys = getRowKeys(parentRow, fromColumns);
+        const keys = getRowKeys(parentRow, this.fromSelects);
         const keyString = makeKeyString(keys);
         const result = resultByParentKey.get(keyString);
         if (result) {
