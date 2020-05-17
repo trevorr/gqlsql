@@ -1,7 +1,7 @@
 export interface BaseTypeMetadata {
   typeName: string;
-  interfaceNames?: string[]; // for objects and unions
   objectTypes?: TableMetadata[]; // for interfaces and unions
+  interfaceNames?: string[]; // union of interfaces implemented by all possible object types
 }
 
 export interface TableMetadata extends BaseTypeMetadata {
