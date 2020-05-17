@@ -23,7 +23,7 @@ export function resolveQid(qid: string, meta: TypeMetadata): [string, TableMetad
   let tableMeta;
   if (isTableMetadata(meta)) {
     if (tableId && meta.tableId && tableId !== meta.tableId) {
-      throw new Error(`Unexpected prefix for ${meta.typeName} ID "${qid}"`);
+      throw new Error(`Unexpected prefix "${tableId}" for ${meta.typeName} ID "${qid}"`);
     }
     tableMeta = meta;
   } else if (!tableId) {
@@ -31,7 +31,7 @@ export function resolveQid(qid: string, meta: TypeMetadata): [string, TableMetad
   } else {
     tableMeta = meta.tableIds[tableId];
     if (!tableMeta) {
-      throw new Error(`Unknown prefix in ${meta.typeName} ID "${qid}"`);
+      throw new Error(`Unknown prefix "${tableId}" in ${meta.typeName} ID "${qid}"`);
     }
   }
   return [randomId, tableMeta];
