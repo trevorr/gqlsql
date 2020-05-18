@@ -11,6 +11,7 @@ export class XidsQueryBuilder {
   public constructor(
     knex: Knex | Knex.Transaction,
     private readonly sqlExecutor: SqlExecutor,
+    private readonly throwNotFound: (message: string, id: string | number) => never,
     private readonly xids: string[],
     meta: TypeMetadata
   ) {
@@ -68,7 +69,7 @@ export class XidsQueryBuilder {
     for (const xid of this.xids) {
       const id = oidIdMap.get(splitQid(xid)[0]);
       if (id == null) {
-        throw new Error(`Unknown ${this.tableMeta.typeName} ID "${xid}"`);
+        this.throwNotFound(`Unknown ${this.tableMeta.typeName} ID "${xid}"`, xid);
       }
       ids.push(id);
     }

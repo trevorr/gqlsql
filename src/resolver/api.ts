@@ -161,13 +161,17 @@ export interface SqlExecutor {
   execute<T>(query: QueryBuilder<any, T>): Promise<T>;
 }
 
+export interface UserInputErrorConstructor {
+  new (message: string, properties?: Record<string, any>): any;
+}
+
 export interface SqlResolverOptions {
   defaultLimit: number;
   maxLimit: number;
   sqlExecutor: SqlExecutor;
   transaction?: Knex.Transaction;
   visitors: Partial<SqlTypeVisitors>;
-  userInputError: { new (message: string): any };
+  userInputError: UserInputErrorConstructor;
 }
 
 export interface SqlResolverFactory {
