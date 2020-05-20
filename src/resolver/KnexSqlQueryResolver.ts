@@ -379,7 +379,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   protected buildDataQuery(query: RowsQueryBuilder): RowsQueryBuilder {
-    query = this.applyJoinTables(query);
+    query = this.applyJoinTables(query, false);
     query = this.applySelect(query);
     query = this.applyOrderBy(query);
     query = this.applyPageRange(query);
@@ -387,10 +387,10 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return query;
   }
 
-  protected applyJoinTables(query: RowsQueryBuilder): RowsQueryBuilder {
-    for (const ext of this.joinTables.values()) {
-      const { join } = ext;
-      if (isEquiJoin(join) && (join.forced || ext.referenced)) {
+  protected applyJoinTables(query: RowsQueryBuilder, forcedOnly: boolean): RowsQueryBuilder {
+    for (const table of this.joinTables.values()) {
+      const { join } = table;
+      if (isEquiJoin(join) && (join.forced || (table.referenced && !forcedOnly))) {
         const {
           toTable,
           toAlias = toTable,
@@ -512,7 +512,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   protected buildTotalCountQuery(query: RowsQueryBuilder): RowsQueryBuilder {
-    return query.count({ totalCount: '*' });
+    return this.applyJoinTables(query, true).count({ totalCount: '*' });
   }
 
   public walk(
