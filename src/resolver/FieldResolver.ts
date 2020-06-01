@@ -1,6 +1,7 @@
 import { Dumpable, PropertyDumper } from 'dumpable';
-import { Json, JsonObject, Row } from './api';
+import { Json, JsonObject } from './api';
 import { FetchMap, ParentRowMap, ResultBuilder } from './internal';
+import { Row } from './TableSpec';
 
 export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T> {
   private readonly fieldSources = new Map<

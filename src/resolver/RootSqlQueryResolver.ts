@@ -2,8 +2,6 @@ import Knex from 'knex';
 import {
   JsonObject,
   ResolverArgs,
-  Row,
-  RowsQueryBuilder,
   SqlQueryResolver,
   SqlQueryRootResolver,
   SqlResolverOptions,
@@ -11,6 +9,7 @@ import {
 } from './api';
 import { FetchLookup, FetchMap, InternalSqlResolverFactory } from './internal';
 import { KnexSqlQueryResolver } from './KnexSqlQueryResolver';
+import { Row, RowsQueryBuilder, TableLike } from './TableSpec';
 
 export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQueryRootResolver {
   private lookup = false;
@@ -18,7 +17,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
   public constructor(
     resolverFactory: InternalSqlResolverFactory,
     knex: Knex,
-    baseTable: string,
+    baseTable: TableLike,
     args?: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>

@@ -1,5 +1,5 @@
 import { QueryBuilder } from 'knex';
-import { Row } from './api';
+import { Row } from './TableSpec';
 
 export function makeCursor(row: Row, sortColumns: string[]): string {
   const cursorRow = sortColumns.reduce((acc: Row, val) => {

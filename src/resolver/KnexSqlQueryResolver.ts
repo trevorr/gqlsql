@@ -1,6 +1,6 @@
 import { PropertyDumper } from 'dumpable';
 import { GraphQLResolveInfo } from 'graphql';
-import Knex, { AliasDict } from 'knex';
+import Knex from 'knex';
 import { snakeCase } from 'snake-case';
 import { Memoize } from 'typescript-memoize';
 import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
@@ -9,8 +9,6 @@ import {
   Json,
   JsonObject,
   ResolverArgs,
-  Row,
-  RowsQueryBuilder,
   SqlConnectionResolver,
   SqlQueryResolver,
   SqlResolverOptions,
@@ -32,6 +30,7 @@ import {
 } from './internal';
 import { EquiJoinSpec, getJoinTable, isEquiJoin, isSameJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
 import { TableResolver } from './TableResolver';
+import { getTableName, getTableQuery, isDerivedTable, Row, RowsQueryBuilder, TableLike } from './TableSpec';
 
 interface SelectColumn {
   table: string;
@@ -97,19 +96,19 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   public constructor(
     resolverFactory: InternalSqlResolverFactory,
     knex: Knex,
-    baseTable: string,
+    baseTable: TableLike,
     args: ResolverArgs = {},
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ) {
-    super(baseTable, baseTable);
+    super(getTableName(baseTable));
     this.resolverFactory = resolverFactory;
     this.knex = knex;
     this.args = args;
     this.typeNameOrFn = typeNameOrFn;
     this.options = Object.assign({}, DefaultResolverOptions, options);
     this.visitors = Object.assign({}, DefaultTypeVisitors, this.options.visitors);
-    this.baseQuery = (this.options.transaction || knex)(baseTable);
+    this.baseQuery = (this.options.transaction || knex)(getTableQuery(baseTable));
     this.reverseOrder = args.last != null && args.first == null;
   }
 
@@ -220,14 +219,19 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public addTable(join: JoinSpec): this {
     const alias = this.addJoinAlias(this.resolveJoin(join), null);
-    this.addTableAlias(isEquiJoin(join) ? join.toTable : join.toAlias, alias);
+    this.addTableAlias(isEquiJoin(join) ? getTableName(join.toTable) : join.toAlias, alias);
     return this;
   }
 
   public addJoinAlias(join: JoinSpec, aliasPrefix: string | null): string {
     if (isEquiJoin(join)) {
+      let baseAlias;
       const { toAlias, toTable } = join;
-      const baseAlias = toAlias || (aliasPrefix && aliasPrefix !== toTable ? `${aliasPrefix}_${toTable}` : toTable);
+      if (isDerivedTable(toTable)) {
+        baseAlias = getTableName(toTable);
+      } else {
+        baseAlias = toAlias || (aliasPrefix && aliasPrefix !== toTable ? `${aliasPrefix}_${toTable}` : toTable);
+      }
       return this.addEquiJoinAlias(join, baseAlias);
     } else {
       const { toAlias } = join;
@@ -294,7 +298,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     let tableAlias, testColumn;
     if (join) {
       tableAlias = this.addJoinAlias(join, snakeCase(field));
-      defaultTable = getJoinTable(join);
+      defaultTable = getTableName(getJoinTable(join));
       if (join.toColumns && join.toColumns.length) {
         testColumn = this.addSelectColumnFromAlias(join.toColumns[0], tableAlias);
       }
@@ -333,7 +337,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     };
     const resolver = new DelegatingSqlQueryResolver(this, outerResolver, typeNameFn);
     for (const table of tables) {
-      resolver.addTableAlias(table.join.toTable, table.join.toAlias!);
+      resolver.addTableAlias(getTableName(table.join.toTable), table.join.toAlias!);
     }
     resolver.addDerivedField('__typename', typeNameFn);
     return resolver;
@@ -486,7 +490,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       if (isEquiJoin(join) && (join.forced || (table.referenced && !forcedOnly))) {
         const {
           toTable,
-          toAlias = toTable,
+          toAlias = getTableName(toTable),
           fromTable = this.defaultTable,
           fromAlias = fromTable,
           toRestrictions = [],
@@ -652,8 +656,11 @@ export function getKnexSelectExpression(knex: Knex, select: SelectExpression): K
   return typeof expr === 'string' ? knex.raw(`${expr} as ??`, [alias]) : knex.raw('? as ??', [expr, alias]);
 }
 
-function getKnexJoinTable(join: EquiJoinSpec): string | AliasDict {
+function getKnexJoinTable(join: EquiJoinSpec): Knex.TableDescriptor | Knex.AliasDict {
   const { toAlias, toTable } = join;
+  if (isDerivedTable(toTable)) {
+    return toTable.query; // should already be aliased with toTable.name
+  }
   return toAlias && toAlias !== toTable ? { [toAlias]: toTable } : toTable;
 }
 

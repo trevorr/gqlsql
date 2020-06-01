@@ -7,7 +7,7 @@ export class TableResolver extends FieldResolver {
 
   public constructor(
     protected readonly defaultTable: string,
-    tableAlias: string,
+    tableAlias: string = defaultTable,
     private readonly outerResolver?: TableResolver
   ) {
     super();

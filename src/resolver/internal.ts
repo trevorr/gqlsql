@@ -4,7 +4,6 @@ import {
   Json,
   JsonObject,
   ResolverArgs,
-  Row,
   SqlConnectionResolver,
   SqlQueryResolver,
   SqlResolverFactory,
@@ -13,6 +12,7 @@ import {
 } from './api';
 import { EquiJoinSpec, JoinSpec, UnionJoinSpec } from './JoinSpec';
 import { TableResolver } from './TableResolver';
+import { Row } from './TableSpec';
 
 export const debug = Debug('gqlsql');
 

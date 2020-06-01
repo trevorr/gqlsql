@@ -1,19 +1,11 @@
 import { PropertyDumper } from 'dumpable';
 import { QueryBuilder } from 'knex';
-import {
-  Json,
-  JsonObject,
-  ResolverArgs,
-  Row,
-  RowsQueryBuilder,
-  SqlQueryResolver,
-  SqlResolverOptions,
-  TypeNameOrFunction
-} from './api';
+import { Json, JsonObject, ResolverArgs, SqlQueryResolver, SqlResolverOptions, TypeNameOrFunction } from './api';
 import { ContainingSqlQueryResolver } from './ContainingSqlQueryResolver';
 import { FetchMap, FetchResult, InternalSqlResolverFactory, ParentRowMap, SqlChildQueryResolver } from './internal';
 import { EquiJoinSpec, getConnectingKey, getFromKey, getToKey, isEquiJoin, isSameKey, JoinSpec } from './JoinSpec';
 import { getKnexSelectColumn, KnexSqlQueryResolver } from './KnexSqlQueryResolver';
+import { getTableName, Row, RowsQueryBuilder } from './TableSpec';
 import { findMap } from './util';
 
 type KeyValue = string | number;
@@ -42,7 +34,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     for (let i = 0; i < join.toColumns.length; ++i) {
       const fromSelect = outerResolver.addSelectColumn(join.fromColumns[i], join.fromTable);
       this.fromSelects.push(fromSelect);
-      const toSelect = this.addSelectColumn(join.toColumns[i], join.toTable);
+      const toSelect = this.addSelectColumn(join.toColumns[i], getTableName(join.toTable));
       this.toSelects.push(toSelect);
       this.addOrderByAlias(toSelect);
     }
@@ -56,7 +48,11 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
       for (;;) {
         // did we connect joins to target table?
         if (isSameKey(fromKey, toKey)) {
-          const resolver = new ContainingSqlQueryResolver(this.parentResolver, this.parentResolver, join.toTable);
+          const resolver = new ContainingSqlQueryResolver(
+            this.parentResolver,
+            this.parentResolver,
+            getTableName(join.toTable)
+          );
           this.addField(field, resolver.buildResult.bind(resolver));
           return resolver;
         }
@@ -83,12 +79,13 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     const limit = this.getLimit();
     if (Number.isInteger(limit) && !this.fetchFilters.length) {
       const { toTable, toColumns } = this.join;
+      const toTableName = getTableName(toTable);
       let sql = 'row_number() over (';
       let nextParam = 'partition by ??';
       const bindings = [];
       for (const toColumn of toColumns) {
         sql += nextParam;
-        bindings.push(getKnexSelectColumn({ table: toTable, column: toColumn }));
+        bindings.push(getKnexSelectColumn({ table: toTableName, column: toColumn }));
         nextParam = ', ??';
       }
 
@@ -172,7 +169,8 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
   private fetchRows(parentKeys: KeyValue[][]): Promise<Row[]> {
     const baseQuery = this.getBaseQuery().clone();
     const { toTable, toColumns, toRestrictions = [] } = this.join;
-    const qualifiedColumns = toColumns.map(toColumn => getKnexSelectColumn({ table: toTable, column: toColumn }));
+    const toTableName = getTableName(toTable);
+    const qualifiedColumns = toColumns.map(toColumn => getKnexSelectColumn({ table: toTableName, column: toColumn }));
     baseQuery.whereIn(qualifiedColumns, parentKeys);
     for (const r of toRestrictions) {
       if ('value' in r) {
@@ -188,7 +186,8 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
   private fetchTotalCounts(parentKeys: KeyValue[][]): Promise<Row[]> {
     const baseQuery = this.getBaseQuery().clone();
     const { toTable, toColumns } = this.join;
-    const qualifiedColumns = toColumns.map(toColumn => getKnexSelectColumn({ table: toTable, column: toColumn }));
+    const toTableName = getTableName(toTable);
+    const qualifiedColumns = toColumns.map(toColumn => getKnexSelectColumn({ table: toTableName, column: toColumn }));
     const countQuery = this.buildTotalCountQuery(
       baseQuery
         .select(qualifiedColumns)

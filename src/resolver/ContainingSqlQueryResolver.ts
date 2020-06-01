@@ -1,6 +1,7 @@
-import { JsonObject, Row } from './api';
+import { JsonObject } from './api';
 import { DelegatingSqlQueryResolver } from './DelegatingSqlQueryResolver';
 import { FetchMap, ParentRowMap, SqlContainingQueryResolver } from './internal';
+import { Row } from './TableSpec';
 
 export class ContainingSqlQueryResolver extends DelegatingSqlQueryResolver implements SqlContainingQueryResolver {
   public buildResult(_row: Row, parentRowMap: ParentRowMap, fetchMap: FetchMap): JsonObject | null {

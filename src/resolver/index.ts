@@ -1,6 +1,7 @@
-export * from './api';
+export * from './TableSpec';
 export * from './ColumnRestriction';
 export * from './JoinSpec';
+export * from './api';
 export * from './mutationUtil';
 export { ConnectionVisitors } from './ConnectionVisitors';
 export { EdgeVisitors } from './EdgeVisitors';

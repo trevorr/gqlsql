@@ -1,8 +1,9 @@
 import { ColumnRestriction, formatColumnRestriction, isSameColumnRestriction } from './ColumnRestriction';
+import { getTableName, TableLike } from './TableSpec';
 import { arrayEqual, optionalArrayEqual } from './util';
 
 export interface EquiJoinSpec {
-  toTable: string;
+  toTable: TableLike;
   toAlias?: string;
   toColumns: string[];
   toRestrictions?: ColumnRestriction[];
@@ -32,12 +33,12 @@ export interface JoinKey {
 
 export function getJoinAlias(join: JoinSpec): string {
   if (isEquiJoin(join)) {
-    return join.toAlias || join.toTable;
+    return join.toAlias || getTableName(join.toTable);
   }
   return join.toAlias;
 }
 
-export function getJoinTable(join: JoinSpec): string {
+export function getJoinTable(join: JoinSpec): TableLike {
   return isEquiJoin(join) ? join.toTable : join.toAlias;
 }
 
@@ -83,8 +84,15 @@ export function formatEquiJoinSpec(j: EquiJoinSpec): string {
   )} on ${criteria.join(' and ')}`;
 }
 
-function formatTableAlias(table?: string, alias?: string): string {
-  return table && alias ? `${table} as ${alias}` : table || alias || '??';
+function formatTableAlias(table?: TableLike, alias?: string): string {
+  if (table) {
+    const tableName = getTableName(table);
+    if (alias && alias != tableName) {
+      return `${table} as ${alias}`;
+    }
+    return tableName;
+  }
+  return alias || '??';
 }
 
 export function formatJoinSpec(j: JoinSpec): string {
@@ -101,7 +109,7 @@ export function getFromKey(join: EquiJoinSpec): JoinKey {
 
 export function getToKey(join: EquiJoinSpec): JoinKey {
   return {
-    table: join.toTable,
+    table: getTableName(join.toTable),
     columns: join.toColumns,
     restrictions: join.toRestrictions
   };

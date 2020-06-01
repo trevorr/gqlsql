@@ -1,7 +1,8 @@
 import { AbstractSqlConnectionResolver } from './AbstractSqlConnectionResolver';
-import { Connection, JsonObject, Row } from './api';
+import { Connection, JsonObject } from './api';
 import { ChildSqlQueryResolver } from './ChildSqlQueryResolver';
 import { FetchMap, ParentRowMap, SqlConnectionChildResolver } from './internal';
+import { Row } from './TableSpec';
 
 export class ChildSqlConnectionResolver extends AbstractSqlConnectionResolver<ChildSqlQueryResolver>
   implements SqlConnectionChildResolver {

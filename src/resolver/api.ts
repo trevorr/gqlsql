@@ -3,6 +3,7 @@ import Knex, { QueryBuilder } from 'knex';
 import { ShallowTypeVisitors, TypeVisitors, WalkOptions } from '../visitor';
 import { GraphQLVisitorInfo } from '../visitor/GraphQLVisitorInfo';
 import { EquiJoinSpec, JoinSpec, UnionJoinSpec } from './JoinSpec';
+import { Row, RowsQueryBuilder, TableLike } from './TableSpec';
 
 export type JsonScalar = string | number | boolean | null;
 
@@ -43,10 +44,6 @@ export interface ConnectionArgs {
 export interface ResolverArgs extends ConnectionArgs {
   [key: string]: any;
 }
-
-export type Row = Record<string, any>;
-
-export type RowsQueryBuilder = QueryBuilder<any, Row[]>;
 
 export type FetchFilter = (rows: Row[]) => Row[];
 
@@ -177,13 +174,13 @@ export interface SqlResolverOptions {
 
 export interface SqlResolverFactory {
   createQuery(
-    table: string,
+    table: TableLike,
     args?: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ): SqlQueryRootResolver;
   createConnection(
-    table: string,
+    table: TableLike,
     args?: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
