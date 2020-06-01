@@ -6,7 +6,8 @@ import {
   RowsQueryBuilder,
   SqlQueryResolver,
   SqlQueryRootResolver,
-  SqlResolverOptions
+  SqlResolverOptions,
+  TypeNameOrFunction
 } from './api';
 import { FetchLookup, FetchMap, InternalSqlResolverFactory } from './internal';
 import { KnexSqlQueryResolver } from './KnexSqlQueryResolver';
@@ -19,9 +20,10 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
     knex: Knex,
     baseTable: string,
     args?: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ) {
-    super(resolverFactory, knex, baseTable, args, options);
+    super(resolverFactory, knex, baseTable, args, typeNameOrFn, options);
   }
 
   protected applyPageLimit(query: RowsQueryBuilder): RowsQueryBuilder {

@@ -57,7 +57,7 @@ export class TableResolver extends FieldResolver {
     return joins.map(join => this.resolveJoin(join));
   }
 
-  protected addTableAlias(table: string, alias: string): void {
+  public addTableAlias(table: string, alias: string): void {
     const existing = this.tableAliases.get(table);
     if (existing) {
       throw new Error(`Table "${table}" already aliased as "${alias}"`);

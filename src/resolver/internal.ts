@@ -9,7 +9,7 @@ import {
   SqlQueryResolver,
   SqlResolverFactory,
   SqlResolverOptions,
-  SqlUnionQueryResolver
+  TypeNameOrFunction
 } from './api';
 import { EquiJoinSpec, JoinSpec, UnionJoinSpec } from './JoinSpec';
 import { TableResolver } from './TableResolver';
@@ -52,26 +52,30 @@ export interface SqlContainingQueryResolver extends SqlQueryResolver, ResultBuil
 
 export interface SqlQueryResolverRBR extends SqlQueryResolver, ResultBuilder<Row> {}
 
-export interface SqlUnionQueryResolverRBR extends SqlUnionQueryResolver, ResultBuilder<Row> {}
-
 export interface BaseSqlQueryResolver extends SqlQueryResolver, ResultBuilder<Row> {
   findTableAlias(table: string): string | undefined;
   getTableAlias(table: string): string;
   getCursor(row: Row): string;
   addJoinAlias(join: JoinSpec, aliasPrefix: string | null): string;
-  createChildResolver(outerResolver: TableResolver & SqlQueryResolver, join: EquiJoinSpec): SqlChildQueryResolver;
+  createChildResolver(
+    outerResolver: TableResolver & SqlQueryResolver,
+    join: EquiJoinSpec,
+    typeNameOrFn?: TypeNameOrFunction
+  ): SqlChildQueryResolver;
   createConnectionResolver(
     outerResolver: TableResolver & SqlQueryResolver,
     join: EquiJoinSpec,
-    args: ResolverArgs
+    args: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction
   ): SqlConnectionChildResolver;
   createObjectResolver(
     outerResolver: TableResolver,
     join: JoinSpec | undefined,
     defaultTable: string,
-    field: string
+    field: string,
+    typeNameOrFn?: TypeNameOrFunction
   ): SqlQueryResolverRBR;
-  createUnionResolver(outerResolver: TableResolver, joins: UnionJoinSpec[], field: string): SqlUnionQueryResolverRBR;
+  createUnionResolver(outerResolver: TableResolver, joins: UnionJoinSpec[], field: string): SqlQueryResolverRBR;
 }
 
 export interface InternalSqlResolverFactory extends SqlResolverFactory {
@@ -80,6 +84,7 @@ export interface InternalSqlResolverFactory extends SqlResolverFactory {
     outerResolver: SqlQueryResolver,
     join: EquiJoinSpec,
     args?: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ): SqlChildQueryResolver;
   createChildConnection(
@@ -87,6 +92,7 @@ export interface InternalSqlResolverFactory extends SqlResolverFactory {
     outerResolver: SqlQueryResolver,
     join: EquiJoinSpec,
     args: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ): SqlConnectionChildResolver;
 }

@@ -15,7 +15,8 @@ import {
   SqlQueryResolver,
   SqlResolverOptions,
   SqlTypeVisitors,
-  SqlUnionQueryResolver
+  TypeNameFunction,
+  TypeNameOrFunction
 } from './api';
 import { ColumnRestriction } from './ColumnRestriction';
 import { applyCursorFilter, makeCursor } from './cursor';
@@ -31,7 +32,6 @@ import {
 } from './internal';
 import { EquiJoinSpec, getJoinTable, isEquiJoin, isSameJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
 import { TableResolver } from './TableResolver';
-import { UnionSqlQueryResolver } from './UnionSqlQueryResolver';
 
 interface SelectColumn {
   table: string;
@@ -56,9 +56,13 @@ interface JoinTable {
   referenced: boolean;
 }
 
+interface UnionTableInfo {
+  join: UnionJoinSpec;
+  testColumn: string;
+}
+
 const DefaultTypeVisitors: SqlTypeVisitors = {
   object: {},
-  union: {},
   connection: {},
   edge: {},
   pageInfo: {}
@@ -77,6 +81,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   protected readonly knex: Knex;
   private readonly baseQuery: RowsQueryBuilder;
   private readonly args: ResolverArgs;
+  private readonly typeNameOrFn?: TypeNameOrFunction;
   protected readonly options: SqlResolverOptions;
   public readonly visitors: SqlTypeVisitors;
   private readonly selects = new Map<string, Select>();
@@ -94,12 +99,14 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     knex: Knex,
     baseTable: string,
     args: ResolverArgs = {},
+    typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ) {
     super(baseTable, baseTable);
     this.resolverFactory = resolverFactory;
     this.knex = knex;
     this.args = args;
+    this.typeNameOrFn = typeNameOrFn;
     this.options = Object.assign({}, DefaultResolverOptions, options);
     this.visitors = Object.assign({}, DefaultTypeVisitors, this.options.visitors);
     this.baseQuery = (this.options.transaction || knex)(baseTable);
@@ -118,6 +125,10 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return this.args;
   }
 
+  public getTypeNameFromRow(row: Row): string | null {
+    return getTypeNameFromRow(this.typeNameOrFn, row);
+  }
+
   public setDistinct(): this {
     this.distinct = true;
     return this;
@@ -128,13 +139,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   public addSelectColumnFromAlias(column: string, tableAlias: string): string {
-    if (tableAlias !== this.defaultTable) {
-      const ext = this.joinTables.get(tableAlias);
-      if (!ext) {
-        throw new Error(`Table alias "${tableAlias}" not found for select of "${column}"`);
-      }
-      ext.referenced = true;
-    }
+    this.checkTableAlias(tableAlias, column);
     let name = column;
     const select = { column, table: tableAlias };
     const existing = this.selects.get(column);
@@ -148,6 +153,57 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public addSelectExpression(expr: string | Knex.Raw, alias = 'expr'): string {
     return this.addSelectAlias({ expr, alias }, alias);
+  }
+
+  public addCoalesceColumn(column: string, tables: string[]): string {
+    return this.addCoalesceExpressionFromAliases(
+      tables.map(table => [this.getTableAlias(table), column]),
+      column
+    );
+  }
+
+  public addCoalesceColumnFromAliases(column: string, tableAliases: string[]): string {
+    return this.addCoalesceExpressionFromAliases(
+      tableAliases.map(tableAlias => [tableAlias, column]),
+      column
+    );
+  }
+
+  public addCoalesceExpression(tableQualifiedColumns: [string, string][], columnAlias?: string): string {
+    return this.addCoalesceExpressionFromAliases(
+      tableQualifiedColumns.map(([table, column]) => [this.getTableAlias(table), column]),
+      columnAlias
+    );
+  }
+
+  public addCoalesceExpressionFromAliases(aliasQualifiedColumns: [string, string][], columnAlias?: string): string {
+    if (aliasQualifiedColumns.length === 1) {
+      const [table, column] = aliasQualifiedColumns[0];
+      this.checkTableAlias(table, column);
+      return this.addSelectAlias({ table, column }, columnAlias ?? column);
+    }
+
+    let sql = 'coalesce(';
+    let nextParam = '??.??';
+    const bindings = [];
+    for (const [tableAlias, column] of aliasQualifiedColumns) {
+      this.checkTableAlias(tableAlias, column);
+      sql += nextParam;
+      bindings.push(tableAlias, column);
+      nextParam = ', ??.??';
+    }
+    sql += ')';
+    return this.addSelectExpression(this.knex.raw(sql, bindings), columnAlias);
+  }
+
+  private checkTableAlias(tableAlias: string, column: string): void {
+    if (tableAlias !== this.defaultTable) {
+      const ext = this.joinTables.get(tableAlias);
+      if (!ext) {
+        throw new Error(`Table alias "${tableAlias}" not found for select of "${column}"`);
+      }
+      ext.referenced = true;
+    }
   }
 
   private addSelectAlias(select: Select, baseAlias: string): string {
@@ -211,6 +267,17 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return this;
   }
 
+  public addCoalesceColumnField(
+    field: string,
+    column: string,
+    tables: string[],
+    func?: (value: any, row: Row) => Json
+  ): this {
+    const alias = this.addCoalesceColumn(column, tables);
+    this.addField(field, func ? row => func(row[alias], row) : row => row[alias]);
+    return this;
+  }
+
   public addExpressionField(field: string, expr: string | Knex.Raw, alias?: string): this {
     const actualAlias = this.addSelectExpression(expr, alias);
     this.addField(field, row => row[actualAlias]);
@@ -221,7 +288,8 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     outerResolver: TableResolver,
     join: JoinSpec | undefined,
     defaultTable: string,
-    field: string
+    field: string,
+    typeNameOrFn?: TypeNameOrFunction
   ): DelegatingSqlQueryResolver {
     let tableAlias, testColumn;
     if (join) {
@@ -231,11 +299,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
         testColumn = this.addSelectColumnFromAlias(join.toColumns[0], tableAlias);
       }
     }
-    return new DelegatingSqlQueryResolver(this, outerResolver, defaultTable, tableAlias, testColumn);
+    return new DelegatingSqlQueryResolver(this, outerResolver, typeNameOrFn, defaultTable, tableAlias, testColumn);
   }
 
-  public addObjectField(field: string, join?: JoinSpec): SqlQueryResolver {
-    const resolver = this.createObjectResolver(this, this.resolveJoin(join), this.defaultTable, field);
+  public addObjectField(field: string, join?: JoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver {
+    const resolver = this.createObjectResolver(this, this.resolveJoin(join), this.defaultTable, field, typeNameOrFn);
     this.addField(field, resolver.buildResult.bind(resolver));
     return resolver;
   }
@@ -244,8 +312,8 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     outerResolver: TableResolver,
     joins: UnionJoinSpec[],
     field: string
-  ): UnionSqlQueryResolver {
-    const tables = [];
+  ): DelegatingSqlQueryResolver {
+    const tables: UnionTableInfo[] = [];
     const aliasPrefix = snakeCase(field);
     for (let join of joins) {
       const tableAlias = this.addJoinAlias(join, aliasPrefix);
@@ -255,10 +323,23 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       const testColumn = this.addSelectColumnFromAlias(join.toColumns[0], tableAlias);
       tables.push({ join, testColumn });
     }
-    return new UnionSqlQueryResolver(this, outerResolver, tables);
+    const typeNameFn: TypeNameFunction = row => {
+      for (const table of tables) {
+        if (row[table.testColumn] != null) {
+          return table.join.typeName;
+        }
+      }
+      return null;
+    };
+    const resolver = new DelegatingSqlQueryResolver(this, outerResolver, typeNameFn);
+    for (const table of tables) {
+      resolver.addTableAlias(table.join.toTable, table.join.toAlias!);
+    }
+    resolver.addDerivedField('__typename', typeNameFn);
+    return resolver;
   }
 
-  public addUnionField(field: string, joins: UnionJoinSpec[]): SqlUnionQueryResolver {
+  public addUnionField(field: string, joins: UnionJoinSpec[]): SqlQueryResolver {
     const resolver = this.createUnionResolver(this, this.resolveJoins(joins), field);
     this.addField(field, resolver.buildResult.bind(resolver));
     return resolver;
@@ -266,10 +347,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public createChildResolver(
     outerResolver: TableResolver & SqlQueryResolver,
-    join: EquiJoinSpec
+    join: EquiJoinSpec,
+    typeNameOrFn?: TypeNameOrFunction
   ): SqlChildQueryResolver {
     const options = { defaultLimit: Infinity, maxLimit: Infinity }; // don't limit plain lists
-    const resolver = this.resolverFactory.createChildQuery(this, outerResolver, join, undefined, options);
+    const resolver = this.resolverFactory.createChildQuery(this, outerResolver, join, undefined, typeNameOrFn, options);
     this.childResolvers.push(resolver);
     return resolver;
   }
@@ -308,8 +390,8 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return resolver;
   }
 
-  public addObjectListField(field: string, join: EquiJoinSpec): SqlQueryResolver {
-    const resolver = this.createChildResolver(this, this.resolveJoin(join));
+  public addObjectListField(field: string, join: EquiJoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver {
+    const resolver = this.createChildResolver(this, this.resolveJoin(join), typeNameOrFn);
     this.addField(field, (parentRow, parentRowMap, fetchMap) =>
       resolver.buildObjectList(fetchMap, parentRow, parentRowMap)
     );
@@ -319,15 +401,21 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   public createConnectionResolver(
     outerResolver: TableResolver & SqlQueryResolver,
     join: EquiJoinSpec,
-    args: ResolverArgs
+    args: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction
   ): SqlConnectionChildResolver {
-    const resolver = this.resolverFactory.createChildConnection(this, outerResolver, join, args);
+    const resolver = this.resolverFactory.createChildConnection(this, outerResolver, join, args, typeNameOrFn);
     this.childResolvers.push(resolver.getNodeResolver());
     return resolver;
   }
 
-  public addConnectionField(field: string, join: EquiJoinSpec, args: ResolverArgs): SqlConnectionResolver {
-    const resolver = this.createConnectionResolver(this, this.resolveJoin(join), args);
+  public addConnectionField(
+    field: string,
+    join: EquiJoinSpec,
+    args: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction
+  ): SqlConnectionResolver {
+    const resolver = this.createConnectionResolver(this, this.resolveJoin(join), args, typeNameOrFn);
     this.addField(
       field,
       (row, parentRowMap, fetchMap) => resolver.buildResultFor(row, parentRowMap, fetchMap) as JsonObject
@@ -348,6 +436,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       name = this.addSelectColumn(column, table);
     }
     return this.addOrderByAlias(name, descending);
+  }
+
+  public addOrderByCoalesce(column: string, tables: string[], descending?: boolean): this {
+    this.addOrderByAlias(this.addCoalesceColumn(column, tables), descending);
+    return this;
   }
 
   public addOrderByAlias(columnAlias: string, descending = false): this {
@@ -533,6 +626,16 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     d.add('orderBys', this.orderByColumnNames);
     d.add('joinTables', this.joinTables);
   }
+}
+
+export function getTypeNameFromRow(typeNameOrFn: TypeNameOrFunction | undefined, row: Row): string | null {
+  if (typeof typeNameOrFn === 'string') {
+    return typeNameOrFn;
+  }
+  if (typeof typeNameOrFn === 'function') {
+    return typeNameOrFn(row);
+  }
+  return null;
 }
 
 export function getKnexSelectColumn(select: SelectColumn): string {

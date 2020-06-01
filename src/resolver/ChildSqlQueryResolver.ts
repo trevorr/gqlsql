@@ -1,8 +1,17 @@
 import { PropertyDumper } from 'dumpable';
 import { QueryBuilder } from 'knex';
-import { ResolverArgs, Row, RowsQueryBuilder, SqlQueryResolver, SqlResolverOptions, Json, JsonObject } from './api';
+import {
+  Json,
+  JsonObject,
+  ResolverArgs,
+  Row,
+  RowsQueryBuilder,
+  SqlQueryResolver,
+  SqlResolverOptions,
+  TypeNameOrFunction
+} from './api';
 import { ContainingSqlQueryResolver } from './ContainingSqlQueryResolver';
-import { FetchMap, FetchResult, InternalSqlResolverFactory, SqlChildQueryResolver, ParentRowMap } from './internal';
+import { FetchMap, FetchResult, InternalSqlResolverFactory, ParentRowMap, SqlChildQueryResolver } from './internal';
 import { EquiJoinSpec, getConnectingKey, getFromKey, getToKey, isEquiJoin, isSameKey, JoinSpec } from './JoinSpec';
 import { getKnexSelectColumn, KnexSqlQueryResolver } from './KnexSqlQueryResolver';
 import { findMap } from './util';
@@ -24,9 +33,10 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     outerResolver: SqlQueryResolver,
     join: EquiJoinSpec,
     args?: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ) {
-    super(resolverFactory, parentResolver.getKnex(), join.toTable, args, options);
+    super(resolverFactory, parentResolver.getKnex(), join.toTable, args, typeNameOrFn, options);
     this.parentResolver = parentResolver;
     this.join = join;
     for (let i = 0; i < join.toColumns.length; ++i) {
@@ -38,7 +48,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     }
   }
 
-  public addObjectField(field: string, join?: JoinSpec): SqlQueryResolver {
+  public addObjectField(field: string, join?: JoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver {
     // possibly joining back to one of the parent tables?
     if (join && isEquiJoin(join) && isSameKey(getFromKey((join = this.resolveJoin(join))), getToKey(this.join))) {
       const toKey = getToKey(join);
@@ -60,7 +70,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
         fromKey = nextKey;
       }
     }
-    return super.addObjectField(field, join);
+    return super.addObjectField(field, join, typeNameOrFn);
   }
 
   protected applyPageLimit(query: RowsQueryBuilder): RowsQueryBuilder {

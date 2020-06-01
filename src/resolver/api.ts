@@ -50,9 +50,11 @@ export type RowsQueryBuilder = QueryBuilder<any, Row[]>;
 
 export type FetchFilter = (rows: Row[]) => Row[];
 
+export type TypeNameFunction = (row: Row) => string | null;
+export type TypeNameOrFunction = string | null | TypeNameFunction;
+
 export interface SqlTypeVisitors {
   readonly object: TypeVisitors<SqlQueryResolver>;
-  readonly union: ShallowTypeVisitors<SqlUnionQueryResolver, SqlQueryResolver>;
   readonly connection: ShallowTypeVisitors<SqlConnectionResolver, SqlQueryResolver>;
   readonly edge: ShallowTypeVisitors<SqlEdgeResolver, SqlQueryResolver>;
   readonly pageInfo: ShallowTypeVisitors<SqlPageInfoResolver, void>;
@@ -63,10 +65,11 @@ export interface SqlFieldResolver {
 
   addConstantField(field: string, value: Json): this;
   addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this;
+  addCoalesceColumnField(field: string, column: string, tables: string[], func?: (value: any, row: Row) => Json): this;
   addExpressionField(field: string, expr: string | Knex.Raw, alias?: string): this;
   addDerivedField(field: string, func: (row: Row) => Json): this;
-  addObjectField(field: string, join?: JoinSpec): SqlQueryResolver;
-  addUnionField(field: string, joins: UnionJoinSpec[]): SqlUnionQueryResolver;
+  addObjectField(field: string, join?: EquiJoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver;
+  addUnionField(field: string, joins: UnionJoinSpec[]): SqlQueryResolver;
 
   addColumnListField(
     field: string,
@@ -76,9 +79,14 @@ export interface SqlFieldResolver {
   ): SqlQueryResolver;
   addExpressionListField(field: string, join: EquiJoinSpec, expr: string | Knex.Raw, alias?: string): SqlQueryResolver;
   addDerivedListField(field: string, join: EquiJoinSpec, func: (row: Row) => Json): SqlQueryResolver;
-  addObjectListField(field: string, join: EquiJoinSpec): SqlQueryResolver;
+  addObjectListField(field: string, join: EquiJoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver;
 
-  addConnectionField(field: string, join: EquiJoinSpec, args: ResolverArgs): SqlConnectionResolver;
+  addConnectionField(
+    field: string,
+    join: EquiJoinSpec,
+    args: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction
+  ): SqlConnectionResolver;
 
   qualifyColumn(column: string, table?: string): string;
 }
@@ -89,6 +97,7 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   getKnex(): Knex;
   getBaseQuery(): RowsQueryBuilder;
   getArguments(): ResolverArgs;
+  getTypeNameFromRow(row: Row): string | null;
 
   getDefaultTable(): string;
   hasTable(table: string): boolean;
@@ -99,7 +108,13 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   addSelectColumnFromAlias(column: string, tableAlias: string): string;
   addSelectExpression(expr: string | Knex.Raw, alias?: string): string;
 
+  addCoalesceColumn(column: string, tables: string[]): string;
+  addCoalesceColumnFromAliases(column: string, tableAliases: string[]): string;
+  addCoalesceExpression(tableQualifiedColumns: [string, string][], columnAlias?: string): string;
+  addCoalesceExpressionFromAliases(aliasQualifiedColumns: [string, string][], columnAlias?: string): string;
+
   addOrderBy(column: string, table?: string, descending?: boolean): this;
+  addOrderByCoalesce(column: string, tables: string[], descending?: boolean): this;
   addOrderByAlias(columnAlias: string, descending?: boolean): this;
 
   addFetchFilter(filter: FetchFilter): this;
@@ -109,20 +124,6 @@ export interface SqlQueryResolver extends SqlFieldResolver {
     config?: SqlQueryResolverConfig<this>,
     options?: WalkOptions
   ): this;
-}
-
-export interface SqlUnionQueryResolver extends SqlQueryResolver {
-  getTypeNameFromRow(row: Row): string | null;
-  addColumnField(
-    field: string,
-    column: string,
-    tables?: string | string[],
-    func?: (value: any, row: Row) => Json
-  ): this;
-  addSelectColumn(column: string, tables?: string | string[]): string;
-  addSelectColumnFromAlias(column: string, tableAliases: string | string[]): string;
-  addSelectCoalesce(tableQualifiedColumns: [string, string][], columnAlias?: string): string;
-  addSelectCoalesceFromAlias(aliasQualifiedColumns: [string, string][], columnAlias?: string): string;
 }
 
 export interface SqlQueryRootResolver extends SqlQueryResolver {
@@ -175,10 +176,16 @@ export interface SqlResolverOptions {
 }
 
 export interface SqlResolverFactory {
-  createQuery(table: string, args?: ResolverArgs, options?: Partial<SqlResolverOptions>): SqlQueryRootResolver;
+  createQuery(
+    table: string,
+    args?: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction,
+    options?: Partial<SqlResolverOptions>
+  ): SqlQueryRootResolver;
   createConnection(
     table: string,
     args?: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ): SqlConnectionRootResolver;
 }

@@ -11,10 +11,11 @@ import {
   SqlConnectionResolver,
   SqlQueryResolver,
   SqlTypeVisitors,
-  SqlUnionQueryResolver
+  TypeNameOrFunction
 } from './api';
 import { BaseSqlQueryResolver, FetchMap, ParentRowMap } from './internal';
 import { EquiJoinSpec, isEquiJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
+import { getTypeNameFromRow } from './KnexSqlQueryResolver';
 import { TableResolver } from './TableResolver';
 
 export class DelegatingSqlQueryResolver extends TableResolver implements SqlQueryResolver {
@@ -23,6 +24,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
   public constructor(
     baseResolver: BaseSqlQueryResolver,
     outerResolver: TableResolver | undefined,
+    private readonly typeNameOrFn?: TypeNameOrFunction,
     defaultTable: string = (outerResolver || baseResolver).getDefaultTable(),
     tableAlias: string = (outerResolver || baseResolver).getTableAlias(defaultTable),
     private readonly testColumn?: string
@@ -45,6 +47,10 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public getBaseQuery(): RowsQueryBuilder {
     return this.baseResolver.getBaseQuery();
+  }
+
+  public getTypeNameFromRow(row: Row): string | null {
+    return getTypeNameFromRow(this.typeNameOrFn, row);
   }
 
   public getArguments(): ResolverArgs {
@@ -74,8 +80,41 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this.baseResolver.addSelectExpression(expr, alias);
   }
 
+  public addCoalesceColumn(column: string, tables: string[]): string {
+    return this.baseResolver.addCoalesceExpressionFromAliases(
+      tables.map(table => [this.getTableAlias(table), column]),
+      column
+    );
+  }
+
+  public addCoalesceColumnFromAliases(column: string, tableAliases: string[]): string {
+    return this.baseResolver.addCoalesceColumnFromAliases(column, tableAliases);
+  }
+
+  public addCoalesceExpression(tableQualifiedColumns: [string, string][], columnAlias?: string): string {
+    return this.baseResolver.addCoalesceExpressionFromAliases(
+      tableQualifiedColumns.map(([table, column]) => [this.getTableAlias(table), column]),
+      columnAlias
+    );
+  }
+
+  public addCoalesceExpressionFromAliases(aliasQualifiedColumns: [string, string][], columnAlias?: string): string {
+    return this.baseResolver.addCoalesceExpressionFromAliases(aliasQualifiedColumns, columnAlias);
+  }
+
   public addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this {
     const alias = this.addSelectColumn(column, table);
+    this.addField(field, func ? row => func(row[alias], row) : row => row[alias]);
+    return this;
+  }
+
+  public addCoalesceColumnField(
+    field: string,
+    column: string,
+    tables: string[],
+    func?: (value: any, row: Row) => Json
+  ): this {
+    const alias = this.addCoalesceColumn(column, tables);
     this.addField(field, func ? row => func(row[alias], row) : row => row[alias]);
     return this;
   }
@@ -86,13 +125,19 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this;
   }
 
-  public addObjectField(field: string, join?: JoinSpec): SqlQueryResolver {
-    const resolver = this.baseResolver.createObjectResolver(this, this.resolveJoin(join), this.defaultTable, field);
+  public addObjectField(field: string, join?: EquiJoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver {
+    const resolver = this.baseResolver.createObjectResolver(
+      this,
+      this.resolveJoin(join),
+      this.defaultTable,
+      field,
+      typeNameOrFn
+    );
     this.addField(field, resolver.buildResult.bind(resolver));
     return resolver;
   }
 
-  public addUnionField(field: string, joins: UnionJoinSpec[]): SqlUnionQueryResolver {
+  public addUnionField(field: string, joins: UnionJoinSpec[]): SqlQueryResolver {
     const resolver = this.baseResolver.createUnionResolver(this, this.resolveJoins(joins), field);
     this.addField(field, resolver.buildResult.bind(resolver));
     return resolver;
@@ -132,16 +177,21 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return resolver;
   }
 
-  public addObjectListField(field: string, join: EquiJoinSpec): SqlQueryResolver {
-    const resolver = this.baseResolver.createChildResolver(this, this.resolveJoin(join));
+  public addObjectListField(field: string, join: EquiJoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver {
+    const resolver = this.baseResolver.createChildResolver(this, this.resolveJoin(join), typeNameOrFn);
     this.addField(field, (parentRow, parentRowMap, fetchMap) =>
       resolver.buildObjectList(fetchMap, parentRow, parentRowMap)
     );
     return resolver;
   }
 
-  public addConnectionField(field: string, join: EquiJoinSpec, args: ResolverArgs): SqlConnectionResolver {
-    const resolver = this.baseResolver.createConnectionResolver(this, this.resolveJoin(join), args);
+  public addConnectionField(
+    field: string,
+    join: EquiJoinSpec,
+    args: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction
+  ): SqlConnectionResolver {
+    const resolver = this.baseResolver.createConnectionResolver(this, this.resolveJoin(join), args, typeNameOrFn);
     this.addField(
       field,
       (row, parentRowMap, fetchMap) => resolver.buildResultFor(row, parentRowMap, fetchMap) as JsonObject
@@ -151,6 +201,11 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public addOrderBy(column: string, table = this.defaultTable, descending?: boolean): this {
     this.baseResolver.addOrderBy(column, table, descending);
+    return this;
+  }
+
+  public addOrderByCoalesce(column: string, tables: string[], descending?: boolean): this {
+    this.baseResolver.addOrderByCoalesce(column, tables, descending);
     return this;
   }
 

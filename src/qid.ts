@@ -1,5 +1,5 @@
 import { isTableMetadata, TableMetadata, TypeMetadata } from './meta';
-import { SqlFieldResolver, SqlUnionQueryResolver } from './resolver';
+import { SqlFieldResolver, SqlQueryResolver } from './resolver';
 
 export function joinQid(randomId: string, tableId: string | undefined): string {
   return tableId ? `${tableId}_${randomId}` : randomId;
@@ -38,7 +38,7 @@ export function resolveQid(qid: string, meta: TypeMetadata): [string, TableMetad
 }
 
 export function addQidField<T extends SqlFieldResolver>(resolver: T, field: string, meta: TableMetadata): T;
-export function addQidField<T extends SqlUnionQueryResolver>(resolver: T, field: string, meta: TypeMetadata): T;
+export function addQidField<T extends SqlQueryResolver>(resolver: T, field: string, meta: TypeMetadata): T;
 export function addQidField<T extends SqlFieldResolver>(resolver: T, field: string, meta: TypeMetadata): T {
   if (isTableMetadata(meta)) {
     if (!meta.randomIdColumn) {
@@ -46,18 +46,18 @@ export function addQidField<T extends SqlFieldResolver>(resolver: T, field: stri
     }
     resolver.addColumnField(field, meta.randomIdColumn, meta.tableName, rid => joinQid(rid, meta.tableId));
   } else {
-    const unionContext = (resolver as SqlFieldResolver) as SqlUnionQueryResolver;
+    const queryResolver = (resolver as SqlFieldResolver) as SqlQueryResolver;
     const metas = Object.values(meta.tableIds);
     const noRidMeta = metas.find(meta => !meta.randomIdColumn);
     if (noRidMeta) {
       throw new Error(`No random ID defined for ${noRidMeta.typeName}`);
     }
-    const ridColumn = unionContext.addSelectCoalesce(
+    const ridColumn = queryResolver.addCoalesceExpression(
       metas.map(meta => [meta.tableName, meta.randomIdColumn!]),
       'rid'
     );
     resolver.addDerivedField(field, row => {
-      const typeName = unionContext.getTypeNameFromRow(row);
+      const typeName = queryResolver.getTypeNameFromRow(row);
       const actualMeta = (meta.objectTypes || metas).find(meta => meta.typeName === typeName);
       return joinQid(row[ridColumn], actualMeta?.tableId);
     });

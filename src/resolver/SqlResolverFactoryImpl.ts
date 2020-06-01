@@ -1,5 +1,5 @@
 import Knex from 'knex';
-import { ResolverArgs, SqlQueryResolver, SqlResolverFactory, SqlResolverOptions } from './api';
+import { ResolverArgs, SqlQueryResolver, SqlResolverFactory, SqlResolverOptions, TypeNameOrFunction } from './api';
 import { ChildSqlConnectionResolver } from './ChildSqlConnectionResolver';
 import { ChildSqlQueryResolver } from './ChildSqlQueryResolver';
 import { BaseSqlQueryResolver, InternalSqlResolverFactory } from './internal';
@@ -11,16 +11,29 @@ import { RootSqlQueryResolver } from './RootSqlQueryResolver';
 class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
   public constructor(private readonly knex: Knex, private readonly defaultOptions?: Partial<SqlResolverOptions>) {}
 
-  public createQuery(table: string, args?: ResolverArgs, options?: Partial<SqlResolverOptions>): RootSqlQueryResolver {
-    return new RootSqlQueryResolver(this, this.knex, table, args, Object.assign({}, this.defaultOptions, options));
+  public createQuery(
+    table: string,
+    args?: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction,
+    options?: Partial<SqlResolverOptions>
+  ): RootSqlQueryResolver {
+    return new RootSqlQueryResolver(
+      this,
+      this.knex,
+      table,
+      args,
+      typeNameOrFn ?? null,
+      Object.assign({}, this.defaultOptions, options)
+    );
   }
 
   public createConnection(
     table: string,
     args?: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ): RootSqlConnectionResolver {
-    return new RootSqlConnectionResolver(this.createQuery(table, args, options));
+    return new RootSqlConnectionResolver(this.createQuery(table, args, typeNameOrFn, options));
   }
 
   public createChildQuery(
@@ -28,6 +41,7 @@ class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
     outerResolver: SqlQueryResolver,
     join: EquiJoinSpec,
     args?: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ): ChildSqlQueryResolver {
     return new ChildSqlQueryResolver(
@@ -36,6 +50,7 @@ class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
       outerResolver,
       join,
       args,
+      typeNameOrFn,
       Object.assign({}, this.defaultOptions, options)
     );
   }
@@ -45,9 +60,12 @@ class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
     outerResolver: SqlQueryResolver,
     join: EquiJoinSpec,
     args: ResolverArgs,
+    typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ): ChildSqlConnectionResolver {
-    return new ChildSqlConnectionResolver(this.createChildQuery(parentResolver, outerResolver, join, args, options));
+    return new ChildSqlConnectionResolver(
+      this.createChildQuery(parentResolver, outerResolver, join, args, typeNameOrFn, options)
+    );
   }
 }
 
