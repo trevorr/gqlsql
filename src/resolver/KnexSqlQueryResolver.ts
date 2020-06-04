@@ -328,12 +328,16 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       tables.push({ join, testColumn });
     }
     const typeNameFn: TypeNameFunction = row => {
+      let result = null;
       for (const table of tables) {
         if (row[table.testColumn] != null) {
-          return table.join.typeName;
+          // returns the last column found, in case an earlier table representing a supertype is joined
+          // to later tables representing subtypes and one of the subtypes does not have its own table
+          // (and thus its type name is associated with the supertype table)
+          result = table.join.typeName;
         }
       }
-      return null;
+      return result;
     };
     const resolver = new DelegatingSqlQueryResolver(this, outerResolver, typeNameFn);
     for (const table of tables) {
