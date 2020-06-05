@@ -1,6 +1,6 @@
 import { PropertyDumper } from 'dumpable';
 import { FieldResolver } from './FieldResolver';
-import { isEquiJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
+import { isEquiJoin, JoinSpec } from './JoinSpec';
 
 export class TableResolver extends FieldResolver {
   protected readonly tableAliases = new Map<string, string>();
@@ -42,19 +42,15 @@ export class TableResolver extends FieldResolver {
     return `${this.getTableAlias(table || this.defaultTable)}.${column}`;
   }
 
-  protected resolveJoin<T extends JoinSpec>(join: T): T;
-  protected resolveJoin<T extends JoinSpec>(join: T | undefined): T | undefined;
-  protected resolveJoin<T extends JoinSpec>(join: T | undefined): T | undefined {
+  public resolveJoin<T extends JoinSpec>(join: T): T;
+  public resolveJoin<T extends JoinSpec>(join: T | undefined): T | undefined;
+  public resolveJoin<T extends JoinSpec>(join: T | undefined): T | undefined {
     if (join && isEquiJoin(join) && !join.fromAlias) {
       const fromTable = join.fromTable || this.defaultTable;
       const fromAlias = this.getTableAlias(fromTable);
       join = { ...join, fromTable, fromAlias };
     }
     return join;
-  }
-
-  protected resolveJoins(joins: UnionJoinSpec[]): UnionJoinSpec[] {
-    return joins.map(join => this.resolveJoin(join));
   }
 
   public addTableAlias(table: string, alias: string): void {

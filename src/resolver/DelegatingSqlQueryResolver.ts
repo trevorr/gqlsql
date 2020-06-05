@@ -137,7 +137,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
   }
 
   public addUnionField(field: string, joins: UnionJoinSpec[]): SqlQueryResolver {
-    const resolver = this.baseResolver.createUnionResolver(this, this.resolveJoins(joins), field);
+    const resolver = this.baseResolver.createUnionResolver(this, joins, field);
     this.addField(field, resolver.buildResult.bind(resolver));
     return resolver;
   }

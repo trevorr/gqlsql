@@ -318,15 +318,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     field: string
   ): DelegatingSqlQueryResolver {
     const tables: UnionTableInfo[] = [];
-    const aliasPrefix = snakeCase(field);
-    for (let join of joins) {
-      const tableAlias = this.addJoinAlias(join, aliasPrefix);
-      if (tableAlias !== join.toAlias) {
-        join = { ...join, toAlias: tableAlias };
-      }
-      const testColumn = this.addSelectColumnFromAlias(join.toColumns[0], tableAlias);
-      tables.push({ join, testColumn });
-    }
+
     const typeNameFn: TypeNameFunction = row => {
       let result = null;
       for (const table of tables) {
@@ -339,16 +331,32 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       }
       return result;
     };
+
     const resolver = new DelegatingSqlQueryResolver(this, outerResolver, typeNameFn);
-    for (const table of tables) {
-      resolver.addTableAlias(getTableName(table.join.toTable), table.join.toAlias!);
-    }
     resolver.addDerivedField('__typename', typeNameFn);
+
+    const aliasPrefix = snakeCase(field);
+    for (let join of joins) {
+      // ensure fromTable and fromAlias are specified, based on aliases defined
+      // in the union resolver, potentially including those added by prior joins
+      join = resolver.resolveJoin(join);
+
+      // determine toAlias and add it to the union resolver for use by subsequent joins or selects
+      const tableAlias = this.addJoinAlias(join, aliasPrefix);
+      if (tableAlias !== join.toAlias) {
+        join = { ...join, toAlias: tableAlias };
+      }
+      resolver.addTableAlias(getTableName(join.toTable), tableAlias);
+
+      const testColumn = this.addSelectColumnFromAlias(join.toColumns[0], tableAlias);
+      tables.push({ join, testColumn });
+    }
+
     return resolver;
   }
 
   public addUnionField(field: string, joins: UnionJoinSpec[]): SqlQueryResolver {
-    const resolver = this.createUnionResolver(this, this.resolveJoins(joins), field);
+    const resolver = this.createUnionResolver(this, joins, field);
     this.addField(field, resolver.buildResult.bind(resolver));
     return resolver;
   }
