@@ -32,8 +32,17 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     this.baseResolver = baseResolver;
   }
 
+  public get data(): Record<string, any> {
+    return this.baseResolver.data;
+  }
+
   public get visitors(): SqlTypeVisitors {
     return this.baseResolver.visitors;
+  }
+
+  public withData(data: Record<string, any>): this {
+    this.baseResolver.withData(data);
+    return this;
   }
 
   public getBaseResolver(): BaseSqlQueryResolver {

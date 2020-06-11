@@ -58,7 +58,10 @@ export interface SqlTypeVisitors {
 }
 
 export interface SqlFieldResolver {
+  readonly data: Record<string, any>;
   readonly visitors: SqlTypeVisitors;
+
+  withData(data: Record<string, any>): this;
 
   addConstantField(field: string, value: Json): this;
   addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this;
@@ -131,13 +134,19 @@ export interface SqlQueryRootResolver extends SqlQueryResolver {
 }
 
 export interface SqlConnectionResolver {
+  readonly data: Record<string, any>;
   readonly visitors: SqlTypeVisitors;
+
+  withData(data: Record<string, any>): this;
+
   getNodeResolver(): SqlQueryResolver;
   getEdgesResolver(): SqlEdgeResolver;
+
   addEdges(field: string): SqlEdgeResolver;
   addNodes(field: string): SqlQueryResolver;
   addPageInfo(field: string): SqlPageInfoResolver;
   addTotalCount(field: string): void;
+
   walk(info: GraphQLVisitorInfo | GraphQLResolveInfo, config?: SqlQueryResolverConfig, options?: WalkOptions): this;
 }
 
@@ -170,6 +179,7 @@ export interface SqlResolverOptions {
   maxLimit: number;
   sqlExecutor: SqlExecutor;
   transaction?: Knex.Transaction;
+  initialData?: Record<string, any>;
   visitors: Partial<SqlTypeVisitors>;
   userInputError: UserInputErrorConstructor;
 }

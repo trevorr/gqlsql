@@ -82,6 +82,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   private readonly args: ResolverArgs;
   private readonly typeNameOrFn?: TypeNameOrFunction;
   protected readonly options: SqlResolverOptions;
+  public readonly data: Record<string, any>;
   public readonly visitors: SqlTypeVisitors;
   private readonly selects = new Map<string, Select>();
   private distinct = false;
@@ -107,9 +108,15 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     this.args = args;
     this.typeNameOrFn = typeNameOrFn;
     this.options = Object.assign({}, DefaultResolverOptions, options);
+    this.data = Object.assign({}, this.options.initialData);
     this.visitors = Object.assign({}, DefaultTypeVisitors, this.options.visitors);
     this.baseQuery = (this.options.transaction || knex)(getTableQuery(baseTable));
     this.reverseOrder = args.last != null && args.first == null;
+  }
+
+  public withData(data: Record<string, any>): this {
+    Object.assign(this.data, data);
+    return this;
   }
 
   public getKnex(): Knex {

@@ -20,8 +20,17 @@ export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver> ext
     this.edgeResolver = new SqlEdgeResolverImpl(nodeResolver, nodeResolver);
   }
 
+  public get data(): Record<string, any> {
+    return this.nodeResolver.data;
+  }
+
   public get visitors(): SqlTypeVisitors {
     return this.nodeResolver.visitors;
+  }
+
+  public withData(data: Record<string, any>): this {
+    this.nodeResolver.withData(data);
+    return this;
   }
 
   public getNodeResolver(): TNR {
