@@ -28,7 +28,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ) {
-    super(resolverFactory, parentResolver.getKnex(), join.toTable, args, typeNameOrFn, options);
+    super(resolverFactory, parentResolver.getKnex(), join.toTable, args, typeNameOrFn, options, parentResolver.data);
     this.parentResolver = parentResolver;
     this.join = join;
     for (let i = 0; i < join.toColumns.length; ++i) {

@@ -100,7 +100,8 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     baseTable: TableLike,
     args: ResolverArgs = {},
     typeNameOrFn?: TypeNameOrFunction,
-    options?: Partial<SqlResolverOptions>
+    options?: Partial<SqlResolverOptions>,
+    data?: Record<string, any>
   ) {
     super(getTableName(baseTable));
     this.resolverFactory = resolverFactory;
@@ -108,7 +109,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     this.args = args;
     this.typeNameOrFn = typeNameOrFn;
     this.options = Object.assign({}, DefaultResolverOptions, options);
-    this.data = Object.assign({}, this.options.initialData);
+    this.data = data || Object.assign({}, this.options.initialData);
     this.visitors = Object.assign({}, DefaultTypeVisitors, this.options.visitors);
     this.baseQuery = (this.options.transaction || knex)(getTableQuery(baseTable));
     this.reverseOrder = args.last != null && args.first == null;
