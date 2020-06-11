@@ -166,7 +166,8 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     return childrenPromise;
   }
 
-  private fetchRows(parentKeys: KeyValue[][]): Promise<Row[]> {
+  private async fetchRows(parentKeys: KeyValue[][]): Promise<Row[]> {
+    if (!parentKeys.length) return [];
     const baseQuery = this.getBaseQuery().clone();
     const { toTable, toColumns, toRestrictions = [] } = this.join;
     const toTableName = getTableName(toTable);
@@ -206,7 +207,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
   public buildJsonList(fetchMap: FetchMap, parentRow: Row, func: (row: Row) => Json): Json[] {
     const fetchLookup = fetchMap.get(this);
     const data = fetchLookup!(parentRow);
-    return data.rows.map(func);
+    return data.rows.map(func).filter(v => v !== undefined);
   }
 
   public dumpProperties(d: PropertyDumper): void {
@@ -217,7 +218,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
 }
 
 function getAllRowKeys(rows: Row[], columns: string[]): KeyValue[][] {
-  return rows.map(row => getRowKeys(row, columns));
+  return rows.filter(row => columns.every(column => row[column] != null)).map(row => getRowKeys(row, columns));
 }
 
 function getRowKeys(row: Row, columns: string[]): KeyValue[] {

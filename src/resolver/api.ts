@@ -99,6 +99,8 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   getDefaultTable(): string;
   hasTable(table: string): boolean;
   addTable(join: JoinSpec): this;
+  forceTable(table: string): this;
+  forceTableAlias(tableAlias: string): this;
 
   setDistinct(): this;
   addSelectColumn(column: string, table?: string): string;

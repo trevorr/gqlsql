@@ -62,6 +62,16 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this;
   }
 
+  public forceTable(table: string): this {
+    this.baseResolver.forceTableAlias(this.getTableAlias(table));
+    return this;
+  }
+
+  public forceTableAlias(tableAlias: string): this {
+    this.baseResolver.forceTableAlias(tableAlias);
+    return this;
+  }
+
   public setDistinct(): this {
     this.baseResolver.setDistinct();
     return this;

@@ -223,6 +223,26 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return this;
   }
 
+  public forceTable(table: string): this {
+    this.forceTableAlias(this.getTableAlias(table));
+    return this;
+  }
+
+  public forceTableAlias(tableAlias: string): this {
+    if (tableAlias !== this.defaultTable) {
+      const ext = this.joinTables.get(tableAlias);
+      if (!ext) {
+        throw new Error(`Join not found for table alias "${tableAlias}"`);
+      }
+      if (isEquiJoin(ext.join)) {
+        ext.join.forced = true;
+      } else {
+        ext.referenced = true;
+      }
+    }
+    return this;
+  }
+
   public addJoinAlias(join: JoinSpec, aliasPrefix: string | null): string {
     if (isEquiJoin(join)) {
       let baseAlias;
