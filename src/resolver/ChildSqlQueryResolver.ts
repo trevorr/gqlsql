@@ -114,9 +114,9 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
 
   public async fetch(parentRows: Row[], fetchMap: FetchMap): Promise<void> {
     const parentKeys = getAllRowKeys(parentRows, this.fromSelects);
-    const rows = this.filterFetch(await this.fetchRows(parentKeys));
-    const childrenPromise = this.fetchChildren(rows, fetchMap);
-    const dataByParentKey = rows.reduce<Map<string, [KeyValue[], Row[]]>>((map, row) => {
+    const allRows = await this.fetchRows(parentKeys);
+    const childrenPromise = this.fetchChildren(allRows, fetchMap);
+    const dataByParentKey = allRows.reduce<Map<string, [KeyValue[], Row[]]>>((map, row) => {
       const keys = getRowKeys(row, this.toSelects);
       const keyString = makeKeyString(keys);
       let data = map.get(keyString);
@@ -128,13 +128,14 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     }, new Map<string, [KeyValue[], Row[]]>());
     const resultByParentKey = new Map<string, FetchResult>();
     const totalCountKeys = [];
-    for (const [keyString, [keys, rows]] of dataByParentKey.entries()) {
-      const result = this.buildFetchResult(rows);
+    for (const [keyString, [keys, groupRows]] of dataByParentKey.entries()) {
+      const filteredRows = this.filterFetch(groupRows);
+      const result = this.buildFetchResult(filteredRows);
       if (this.needTotalCount) {
         if (result.hasNextPage) {
           totalCountKeys.push(keys);
         } else {
-          result.totalCount = rows.length;
+          result.totalCount = filteredRows.length;
         }
       }
       resultByParentKey.set(keyString, result);
