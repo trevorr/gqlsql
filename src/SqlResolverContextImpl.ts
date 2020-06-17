@@ -56,7 +56,7 @@ class SqlResolverContextImpl implements SqlResolverContext {
   public async queryRow(query: Knex.QueryBuilder, description = 'Row'): Promise<Record<string, any>> {
     const rows = await this.sqlExecutor.execute(query);
     if (!rows.length) {
-      throw new Error(`${description} not found`);
+      throw new this.userInputError(`${description} not found`, { code: 'NOT_FOUND' });
     }
     return rows[0];
   }
