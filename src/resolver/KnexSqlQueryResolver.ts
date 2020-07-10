@@ -570,12 +570,23 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   protected applyPageRange(query: RowsQueryBuilder): RowsQueryBuilder {
-    const { args, orderByColumnNames } = this;
-    if (args.after) {
-      query = applyCursorFilter(query, args.after, '>', orderByColumnNames);
-    }
-    if (args.before) {
-      query = applyCursorFilter(query, args.before, '<', orderByColumnNames);
+    const { args } = this;
+    if (args.after || args.before) {
+      const sortFields = this.orderByColumnNames;
+      const whereFields = sortFields.map(f => {
+        const select = this.selects.get(f);
+        if (select && 'table' in select) {
+          const { table, column } = select;
+          return `${table}.${column}`;
+        }
+        return f;
+      });
+      if (args.after) {
+        query = applyCursorFilter(query, args.after, '>', sortFields, whereFields);
+      }
+      if (args.before) {
+        query = applyCursorFilter(query, args.before, '<', sortFields, whereFields);
+      }
     }
     return query;
   }
