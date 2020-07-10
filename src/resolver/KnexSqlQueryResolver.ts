@@ -227,7 +227,17 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public addTable(join: JoinSpec): this {
     const alias = this.addJoinAlias(this.resolveJoin(join), null);
-    this.addTableAlias(isEquiJoin(join) ? getTableName(join.toTable) : join.toAlias, alias);
+    let table;
+    if (isEquiJoin(join)) {
+      if (join.forced) {
+        table = this.applyJoin(this.baseQuery, join);
+      } else {
+        table = getTableName(join.toTable);
+      }
+    } else {
+      table = join.toAlias;
+    }
+    this.addTableAlias(table, alias);
     return this;
   }
 
@@ -242,11 +252,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       if (!ext) {
         throw new Error(`Join not found for table alias "${tableAlias}"`);
       }
-      if (isEquiJoin(ext.join)) {
+      if (isEquiJoin(ext.join) && !ext.join.forced) {
         ext.join.forced = true;
-      } else {
-        ext.referenced = true;
+        this.applyJoin(this.baseQuery, ext.join);
       }
+      ext.referenced = true;
     }
     return this;
   }
@@ -516,7 +526,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   protected buildDataQuery(query: RowsQueryBuilder): RowsQueryBuilder {
-    query = this.applyJoinTables(query, false);
+    query = this.applyJoinTables(query);
     query = this.applySelect(query);
     query = this.applyOrderBy(query);
     query = this.applyPageRange(query);
@@ -524,28 +534,35 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return query;
   }
 
-  protected applyJoinTables(query: RowsQueryBuilder, forcedOnly: boolean): RowsQueryBuilder {
+  protected applyJoinTables(query: RowsQueryBuilder): RowsQueryBuilder {
     for (const table of this.joinTables.values()) {
-      const { join } = table;
-      if (isEquiJoin(join) && (join.forced || (table.referenced && !forcedOnly))) {
-        const {
-          toTable,
-          toAlias = getTableName(toTable),
-          fromTable = this.defaultTable,
-          fromAlias = fromTable,
-          toRestrictions = [],
-          fromRestrictions = []
-        } = join;
-        query.leftJoin(getKnexJoinTable(join), clause => {
-          for (let i = 0; i < join.toColumns.length; ++i) {
-            clause.on(`${toAlias}.${join.toColumns[i]}`, `${fromAlias}.${join.fromColumns[i]}`);
-          }
-          this.addJoinRestrictions(clause, toAlias, toRestrictions);
-          this.addJoinRestrictions(clause, fromAlias, fromRestrictions);
-        });
+      if (table.referenced) {
+        const { join } = table;
+        if (isEquiJoin(join) && !join.forced) {
+          this.applyJoin(query, join);
+        }
       }
     }
     return query;
+  }
+
+  protected applyJoin(query: RowsQueryBuilder, join: EquiJoinSpec): string {
+    const {
+      toTable,
+      toAlias = getTableName(toTable),
+      fromTable = this.defaultTable,
+      fromAlias = fromTable,
+      toRestrictions = [],
+      fromRestrictions = []
+    } = join;
+    query.leftJoin(getKnexJoinTable(join), clause => {
+      for (let i = 0; i < join.toColumns.length; ++i) {
+        clause.on(`${toAlias}.${join.toColumns[i]}`, `${fromAlias}.${join.fromColumns[i]}`);
+      }
+      this.addJoinRestrictions(clause, toAlias, toRestrictions);
+      this.addJoinRestrictions(clause, fromAlias, fromRestrictions);
+    });
+    return toAlias;
   }
 
   private addJoinRestrictions(clause: Knex.JoinClause, table: string, restrictions: ColumnRestriction[]): void {
@@ -660,7 +677,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   protected buildTotalCountQuery(query: RowsQueryBuilder): RowsQueryBuilder {
-    return this.applyJoinTables(query, true).count({ totalCount: '*' });
+    return query.count({ totalCount: '*' });
   }
 
   public walk(
