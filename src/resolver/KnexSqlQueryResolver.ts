@@ -525,6 +525,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     await Promise.all(this.childResolvers.map(resolver => resolver.fetch(parentRows, map)));
   }
 
+
+  public getDataQuery(): RowsQueryBuilder {
+    return this.buildDataQuery(this.baseQuery.clone());
+  }
+
   protected buildDataQuery(query: RowsQueryBuilder): RowsQueryBuilder {
     query = this.applyJoinTables(query);
     query = this.applySelect(query);

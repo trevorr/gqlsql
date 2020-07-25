@@ -129,6 +129,7 @@ export interface SqlQueryResolver extends SqlFieldResolver {
 }
 
 export interface SqlQueryRootResolver extends SqlQueryResolver {
+  getDataQuery(): RowsQueryBuilder;
   execute(): Promise<JsonObject[]>;
   executeLookup(): Promise<JsonObject | null>;
 }

@@ -54,8 +54,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
   }
 
   private fetchRows(): Promise<Row[]> {
-    const query = this.buildDataQuery(this.getBaseQuery().clone());
-    return this.options.sqlExecutor.execute(query);
+    return this.options.sqlExecutor.execute(this.getDataQuery());
   }
 
   private async fetchTotalCount(): Promise<number> {
