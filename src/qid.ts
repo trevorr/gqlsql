@@ -47,7 +47,7 @@ export function addQidField<T extends SqlFieldResolver>(resolver: T, field: stri
     resolver.addColumnField(field, meta.randomIdColumn, meta.tableName, rid => joinQid(rid, meta.tableId));
   } else {
     const queryResolver = (resolver as SqlFieldResolver) as SqlQueryResolver;
-    const metas = Object.values(meta.tableIds);
+    const metas = Object.values(meta.tableIds).filter(meta => queryResolver.hasTable(meta.tableName));
     const noRidMeta = metas.find(meta => !meta.randomIdColumn);
     if (noRidMeta) {
       throw new Error(`No random ID defined for ${noRidMeta.typeName}`);
