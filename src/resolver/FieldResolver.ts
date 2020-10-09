@@ -34,7 +34,7 @@ export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T>
       for (const source of sources) {
         const sourceValue = source(data, parentRowMap, fetchMap);
         if (sourceValue != null) {
-          if (value != null && value != sourceValue) {
+          if (value != null && value != sourceValue && !isEmptyConnection(value)) {
             throw new Error(`Conflicting values for field "${field}"`);
           }
           value = sourceValue;
@@ -53,4 +53,8 @@ export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T>
     super.dumpProperties(d);
     d.add('fields', this.fieldSources.keys());
   }
+}
+
+function isEmptyConnection(value: Json): boolean {
+  return value != null && typeof value === 'object' && '__emptyConnection' in value;
 }
