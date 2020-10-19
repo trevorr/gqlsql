@@ -1,4 +1,5 @@
 import { Dumpable, PropertyDumper } from 'dumpable';
+import equal from 'fast-deep-equal';
 import { Json, JsonObject } from './api';
 import { FetchMap, ParentRowMap, ResultBuilder } from './internal';
 import { Row } from './TableSpec';
@@ -36,7 +37,7 @@ export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T>
         if (sourceValue != null) {
           if (value == null || isOrContainsOnlyEmptyConnections(value)) {
             value = sourceValue;
-          } else if (value != sourceValue && !isOrContainsOnlyEmptyConnections(sourceValue)) {
+          } else if (!equal(value, sourceValue) && !isOrContainsOnlyEmptyConnections(sourceValue)) {
             throw new Error(`Conflicting values for field "${field}"`);
           }
         }
