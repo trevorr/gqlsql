@@ -34,10 +34,11 @@ export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T>
       for (const source of sources) {
         const sourceValue = source(data, parentRowMap, fetchMap);
         if (sourceValue != null) {
-          if (value != null && value != sourceValue && !isEmptyConnection(value)) {
+          if (value == null || isOrContainsOnlyEmptyConnections(value)) {
+            value = sourceValue;
+          } else if (value != sourceValue && !isOrContainsOnlyEmptyConnections(sourceValue)) {
             throw new Error(`Conflicting values for field "${field}"`);
           }
-          value = sourceValue;
         }
       }
       result[field] = value;
@@ -55,6 +56,17 @@ export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T>
   }
 }
 
-function isEmptyConnection(value: Json): boolean {
-  return value != null && typeof value === 'object' && '__emptyConnection' in value;
+function isOrContainsOnlyEmptyConnections(value: Json): boolean {
+  return (
+    isJsonObject(value) &&
+    (isEmptyConnection(value) || Object.values(value).every(v => isOrContainsOnlyEmptyConnections(v)))
+  );
+}
+
+function isJsonObject(value: Json): value is JsonObject {
+  return value != null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isEmptyConnection(value: JsonObject): boolean {
+  return '__emptyConnection' in value;
 }
