@@ -47,6 +47,9 @@ export interface ResolverArgs extends ConnectionArgs {
 
 export type FetchFilter = (rows: Row[]) => Row[];
 
+export type SearchId = string;
+export type SearchRowTransform = (row: Row, id: SearchId) => Row;
+
 export type TypeNameFunction = (row: Row) => string | null;
 export type TypeNameOrFunction = string | null | TypeNameFunction;
 
@@ -118,6 +121,7 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   addOrderBy(column: string, table?: string, descending?: boolean): this;
   addOrderByCoalesce(column: string, tables: string[], descending?: boolean): this;
   addOrderByAlias(columnAlias: string, descending?: boolean): this;
+  addCursorAlias(columnAlias: string): this;
 
   addFetchFilter(filter: FetchFilter): this;
 
@@ -153,6 +157,12 @@ export interface SqlConnectionResolver {
 
 export interface SqlConnectionRootResolver extends SqlConnectionResolver {
   execute(): Promise<Partial<Connection<JsonObject>>>;
+  executeFromSearch(
+    idColumn: string,
+    idValues: SearchId[],
+    totalCount: number,
+    rowTransform?: SearchRowTransform
+  ): Promise<Partial<Connection<JsonObject>>>;
 }
 
 export interface SqlEdgeResolver extends SqlFieldResolver {

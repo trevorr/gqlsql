@@ -17,3 +17,7 @@ export function findMap<S, T>(a: Iterable<T>, f: (v: T) => S | false | null | un
     if (x) return x;
   }
 }
+
+export function notNull<T>(value: T | null | undefined): value is T {
+  return value != null;
+}

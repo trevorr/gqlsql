@@ -2,6 +2,8 @@ import Knex from 'knex';
 import {
   JsonObject,
   ResolverArgs,
+  SearchId,
+  SearchRowTransform,
   SqlQueryResolver,
   SqlQueryRootResolver,
   SqlResolverOptions,
@@ -10,6 +12,7 @@ import {
 import { FetchLookup, FetchMap, InternalSqlResolverFactory } from './internal';
 import { KnexSqlQueryResolver } from './KnexSqlQueryResolver';
 import { Row, RowsQueryBuilder, TableLike } from './TableSpec';
+import { notNull } from './util';
 
 export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQueryRootResolver {
   private lookup = false;
@@ -38,9 +41,9 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
   }
 
   public async fetch(): Promise<FetchMap> {
-    const map = new Map<SqlQueryResolver, FetchLookup>();
     const rows = this.filterFetch(await this.fetchRows());
     const result = this.buildFetchResult(rows);
+
     if (this.needTotalCount) {
       if (result.hasNextPage) {
         result.totalCount = await this.fetchTotalCount();
@@ -48,6 +51,8 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
         result.totalCount = rows.length;
       }
     }
+
+    const map = new Map<SqlQueryResolver, FetchLookup>();
     map.set(this, () => result);
     await this.fetchChildren(rows, map);
     return map;
@@ -61,6 +66,36 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
     const query = this.buildTotalCountQuery(this.getBaseQuery().clone());
     const rows = await this.options.sqlExecutor.execute(query);
     return parseInt(rows[0].totalCount);
+  }
+
+  public async fetchFromSearch(
+    idColumn: string,
+    idValues: SearchId[],
+    totalCount: number,
+    rowTransform?: SearchRowTransform
+  ): Promise<FetchMap> {
+    const idAlias = this.addSelectColumn(idColumn);
+    const query = this.getSearchQuery().whereIn(this.qualifyColumn(idColumn), idValues);
+    const rawRows = await this.options.sqlExecutor.execute(query);
+    const rowsById = rawRows.reduce<Map<string, Row>>((map, row) => {
+      map.set(String(row[idAlias]), row);
+      return map;
+    }, new Map<string, Row>());
+    let rows = idValues.map(id => rowsById.get(String(id))).filter(notNull);
+    if (rowTransform) {
+      rows = rows.map(row => rowTransform(row, row[idAlias]));
+    }
+    rows = this.filterFetch(rows);
+    const result = this.buildFetchResult(rows);
+
+    if (this.needTotalCount) {
+      result.totalCount = totalCount;
+    }
+
+    const map = new Map<SqlQueryResolver, FetchLookup>();
+    map.set(this, () => result);
+    await this.fetchChildren(rows, map);
+    return map;
   }
 
   public async execute(): Promise<JsonObject[]> {

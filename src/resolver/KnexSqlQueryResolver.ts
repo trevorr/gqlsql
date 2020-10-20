@@ -87,7 +87,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   private readonly selects = new Map<string, Select>();
   private distinct = false;
   protected readonly orderByColumns = new Map<string, OrderByColumn>();
-  private readonly orderByColumnNames: string[] = [];
+  private readonly cursorColumns: string[] = [];
   protected readonly reverseOrder: boolean;
   private readonly joinTables = new Map<string, JoinTable>();
   private readonly childResolvers: SqlChildQueryResolver[] = [];
@@ -503,7 +503,14 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
         descending = !descending;
       }
       this.orderByColumns.set(columnAlias, { name: columnAlias, descending });
-      this.orderByColumnNames.push(columnAlias);
+      this.cursorColumns.push(columnAlias);
+    }
+    return this;
+  }
+
+  public addCursorAlias(columnAlias: string): this {
+    if (!this.cursorColumns.includes(columnAlias)) {
+      this.cursorColumns.push(columnAlias);
     }
     return this;
   }
@@ -514,7 +521,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   public getCursor(row: Row): string {
-    return makeCursor(row, this.orderByColumnNames);
+    return makeCursor(row, this.cursorColumns);
   }
 
   public addTotalCount(): void {
@@ -524,7 +531,6 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   protected async fetchChildren(parentRows: Row[], map: FetchMap): Promise<void> {
     await Promise.all(this.childResolvers.map(resolver => resolver.fetch(parentRows, map)));
   }
-
 
   public getDataQuery(): RowsQueryBuilder {
     return this.buildDataQuery(this.baseQuery.clone());
@@ -536,6 +542,16 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     query = this.applyOrderBy(query);
     query = this.applyPageRange(query);
     query = this.applyPageLimit(query);
+    return query;
+  }
+
+  public getSearchQuery(): RowsQueryBuilder {
+    return this.buildSearchQuery(this.baseQuery.clone());
+  }
+
+  protected buildSearchQuery(query: RowsQueryBuilder): RowsQueryBuilder {
+    query = this.applyJoinTables(query);
+    query = this.applySelect(query);
     return query;
   }
 
@@ -594,7 +610,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   protected applyPageRange(query: RowsQueryBuilder): RowsQueryBuilder {
     const { args } = this;
     if (args.after || args.before) {
-      const sortFields = this.orderByColumnNames;
+      const sortFields = this.cursorColumns;
       const whereFields = sortFields.map(f => {
         const select = this.selects.get(f);
         if (select && 'table' in select) {
@@ -700,8 +716,8 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   public dumpProperties(d: PropertyDumper): void {
     super.dumpProperties(d);
     d.add('selects', this.selects.keys());
-    d.add('orderBys', this.orderByColumnNames);
     d.add('joinTables', this.joinTables);
+    d.add('cursorColumns', this.cursorColumns);
   }
 }
 

@@ -232,6 +232,11 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this;
   }
 
+  public addCursorAlias(columnAlias: string): this {
+    this.baseResolver.addCursorAlias(columnAlias);
+    return this;
+  }
+
   public addFetchFilter(filter: FetchFilter): this {
     this.baseResolver.addFetchFilter(filter);
     return this;
