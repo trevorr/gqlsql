@@ -53,6 +53,7 @@ interface OrderByColumn {
 interface JoinTable {
   join: JoinSpec;
   referenced: boolean;
+  applied: boolean;
 }
 
 interface UnionTableInfo {
@@ -226,11 +227,12 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   public addTable(join: JoinSpec): this {
-    const alias = this.addJoinAlias(this.resolveJoin(join), null);
+    const [alias, ext] = this.addJoinAliasAndReturnTable(this.resolveJoin(join), null);
     let table;
     if (isEquiJoin(join)) {
-      if (join.forced) {
+      if (join.forced && !ext.applied) {
         table = this.applyJoin(this.baseQuery, join);
+        ext.applied = true;
       } else {
         table = getTableName(join.toTable);
       }
@@ -254,7 +256,10 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       }
       if (isEquiJoin(ext.join) && !ext.join.forced) {
         ext.join.forced = true;
-        this.applyJoin(this.baseQuery, ext.join);
+        if (!ext.applied) {
+          this.applyJoin(this.baseQuery, ext.join);
+          ext.applied = true;
+        }
       }
       ext.referenced = true;
     }
@@ -262,6 +267,10 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   public addJoinAlias(join: JoinSpec, aliasPrefix: string | null): string {
+    return this.addJoinAliasAndReturnTable(join, aliasPrefix)[0];
+  }
+
+  private addJoinAliasAndReturnTable(join: JoinSpec, aliasPrefix: string | null): [string, JoinTable] {
     if (isEquiJoin(join)) {
       let baseAlias;
       const { toAlias, toTable } = join;
@@ -273,27 +282,34 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       return this.addEquiJoinAlias(join, baseAlias);
     } else {
       const { toAlias } = join;
+      let ext: JoinTable;
       if (this.defaultTable !== toAlias) {
         const existing = this.joinTables.get(toAlias);
         if (!existing) {
-          this.joinTables.set(toAlias, { join, referenced: false });
-        } else if (!isSameJoin(join, existing.join)) {
+          ext = { join, referenced: false, applied: false };
+          this.joinTables.set(toAlias, ext);
+        } else if (isSameJoin(join, existing.join)) {
+          ext = existing;
+        } else {
           throw new Error(`Conflicting definition for provided join alias "${toAlias}"`);
         }
+      } else {
+        ext = { join, referenced: true, applied: true };
       }
-      return toAlias;
+      return [toAlias, ext];
     }
   }
 
-  private addEquiJoinAlias(join: EquiJoinSpec, baseAlias: string): string {
+  private addEquiJoinAlias(join: EquiJoinSpec, baseAlias: string): [string, JoinTable] {
     for (let alias = baseAlias, index = 1; ; ++index, alias = `${baseAlias}${index}`) {
       if (alias !== this.defaultTable) {
         const existing = this.joinTables.get(alias);
         if (!existing) {
-          this.joinTables.set(alias, { join: { ...join, toAlias: alias }, referenced: !!join.forced });
-          return alias;
+          const ext = { join: { ...join, toAlias: alias }, referenced: !!join.forced, applied: false };
+          this.joinTables.set(alias, ext);
+          return [alias, ext];
         } else if (isSameJoin(join, existing.join)) {
-          return alias;
+          return [alias, existing];
         }
       }
     }
@@ -557,10 +573,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   protected applyJoinTables(query: RowsQueryBuilder): RowsQueryBuilder {
     for (const table of this.joinTables.values()) {
-      if (table.referenced) {
+      if (table.referenced && !table.applied) {
         const { join } = table;
-        if (isEquiJoin(join) && !join.forced) {
+        if (isEquiJoin(join)) {
           this.applyJoin(query, join);
+          table.applied = true;
         }
       }
     }
