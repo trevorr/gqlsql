@@ -40,7 +40,7 @@ class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
   public createChildQuery(
     parentResolver: BaseSqlQueryResolver,
     outerResolver: SqlQueryResolver,
-    join: EquiJoinSpec,
+    joins: EquiJoinSpec[],
     args?: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
@@ -49,7 +49,7 @@ class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
       this,
       parentResolver as KnexSqlQueryResolver,
       outerResolver,
-      join,
+      joins,
       args,
       typeNameOrFn,
       Object.assign({}, this.defaultOptions, options)
@@ -59,13 +59,13 @@ class SqlResolverFactoryImpl implements InternalSqlResolverFactory {
   public createChildConnection(
     parentResolver: BaseSqlQueryResolver,
     outerResolver: SqlQueryResolver,
-    join: EquiJoinSpec,
+    joins: EquiJoinSpec[],
     args: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ): ChildSqlConnectionResolver {
     return new ChildSqlConnectionResolver(
-      this.createChildQuery(parentResolver, outerResolver, join, args, typeNameOrFn, options)
+      this.createChildQuery(parentResolver, outerResolver, joins, args, typeNameOrFn, options)
     );
   }
 }

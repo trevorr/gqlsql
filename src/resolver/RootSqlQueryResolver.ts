@@ -25,7 +25,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ) {
-    super(resolverFactory, knex, baseTable, args, typeNameOrFn, options);
+    super(resolverFactory, knex, baseTable, undefined, args, typeNameOrFn, options);
   }
 
   protected applyPageLimit(query: RowsQueryBuilder): RowsQueryBuilder {

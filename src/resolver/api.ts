@@ -76,17 +76,26 @@ export interface SqlFieldResolver {
 
   addColumnListField(
     field: string,
-    join: EquiJoinSpec,
+    join: EquiJoinSpec | EquiJoinSpec[],
     column: string,
     func?: (value: any, row: Row) => Json
   ): SqlQueryResolver;
-  addExpressionListField(field: string, join: EquiJoinSpec, expr: string | Knex.Raw, alias?: string): SqlQueryResolver;
-  addDerivedListField(field: string, join: EquiJoinSpec, func: (row: Row) => Json): SqlQueryResolver;
-  addObjectListField(field: string, join: EquiJoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver;
+  addExpressionListField(
+    field: string,
+    join: EquiJoinSpec | EquiJoinSpec[],
+    expr: string | Knex.Raw,
+    alias?: string
+  ): SqlQueryResolver;
+  addDerivedListField(field: string, join: EquiJoinSpec | EquiJoinSpec[], func: (row: Row) => Json): SqlQueryResolver;
+  addObjectListField(
+    field: string,
+    join: EquiJoinSpec | EquiJoinSpec[],
+    typeNameOrFn?: TypeNameOrFunction
+  ): SqlQueryResolver;
 
   addConnectionField(
     field: string,
-    join: EquiJoinSpec,
+    join: EquiJoinSpec | EquiJoinSpec[],
     args: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction
   ): SqlConnectionResolver;

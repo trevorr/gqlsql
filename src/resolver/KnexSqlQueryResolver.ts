@@ -79,6 +79,7 @@ const DefaultResolverOptions: SqlResolverOptions = {
 export abstract class KnexSqlQueryResolver extends TableResolver implements BaseSqlQueryResolver {
   protected readonly resolverFactory: InternalSqlResolverFactory;
   protected readonly knex: Knex;
+  private readonly baseTableName: string;
   private readonly baseQuery: RowsQueryBuilder;
   private readonly args: ResolverArgs;
   private readonly typeNameOrFn?: TypeNameOrFunction;
@@ -99,14 +100,16 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     resolverFactory: InternalSqlResolverFactory,
     knex: Knex,
     baseTable: TableLike,
+    defaultTable = getTableName(baseTable),
     args: ResolverArgs = {},
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>,
     data?: Record<string, any>
   ) {
-    super(getTableName(baseTable));
+    super(defaultTable);
     this.resolverFactory = resolverFactory;
     this.knex = knex;
+    this.baseTableName = getTableName(baseTable);
     this.args = args;
     this.typeNameOrFn = typeNameOrFn;
     this.options = Object.assign({}, DefaultResolverOptions, options);
@@ -205,7 +208,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   private checkTableAlias(tableAlias: string, column: string): void {
-    if (tableAlias !== this.defaultTable) {
+    if (tableAlias !== this.baseTableName) {
       const ext = this.joinTables.get(tableAlias);
       if (!ext) {
         throw new Error(`Table alias "${tableAlias}" not found for select of "${column}"`);
@@ -249,7 +252,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   public forceTableAlias(tableAlias: string): this {
-    if (tableAlias !== this.defaultTable) {
+    if (tableAlias !== this.baseTableName) {
       const ext = this.joinTables.get(tableAlias);
       if (!ext) {
         throw new Error(`Join not found for table alias "${tableAlias}"`);
@@ -283,7 +286,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     } else {
       const { toAlias } = join;
       let ext: JoinTable;
-      if (this.defaultTable !== toAlias) {
+      if (this.baseTableName !== toAlias) {
         const existing = this.joinTables.get(toAlias);
         if (!existing) {
           ext = { join, referenced: false, applied: false };
@@ -302,7 +305,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   private addEquiJoinAlias(join: EquiJoinSpec, baseAlias: string): [string, JoinTable] {
     for (let alias = baseAlias, index = 1; ; ++index, alias = `${baseAlias}${index}`) {
-      if (alias !== this.defaultTable) {
+      if (alias !== this.baseTableName) {
         const existing = this.joinTables.get(alias);
         if (!existing) {
           const ext = { join: { ...join, toAlias: alias }, referenced: !!join.forced, applied: false };
@@ -417,7 +420,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public createChildResolver(
     outerResolver: TableResolver & SqlQueryResolver,
-    join: EquiJoinSpec,
+    join: EquiJoinSpec[],
     typeNameOrFn?: TypeNameOrFunction
   ): SqlChildQueryResolver {
     const options = { defaultLimit: Infinity, maxLimit: Infinity }; // don't limit plain lists
@@ -428,11 +431,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public addColumnListField(
     field: string,
-    join: EquiJoinSpec,
+    join: EquiJoinSpec | EquiJoinSpec[],
     column: string,
     func?: (value: any, row: Row) => Json
   ): SqlQueryResolver {
-    const resolver = this.createChildResolver(this, this.resolveJoin(join));
+    const resolver = this.createChildResolver(this, this.resolvePrimaryJoin(join));
     const alias = resolver.addSelectColumn(column);
     this.addField(field, (parentRow, _, fetchMap) =>
       resolver.buildJsonList(fetchMap, parentRow, func ? row => func(row[alias], row) : row => row[alias])
@@ -442,11 +445,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public addExpressionListField(
     field: string,
-    join: EquiJoinSpec,
+    join: EquiJoinSpec | EquiJoinSpec[],
     expr: string | Knex.Raw,
     alias?: string
   ): SqlQueryResolver {
-    const resolver = this.createChildResolver(this, this.resolveJoin(join));
+    const resolver = this.createChildResolver(this, this.resolvePrimaryJoin(join));
     const actualAlias = resolver.addSelectExpression(expr, alias);
     this.addField(field, (parentRow, _, fetchMap) =>
       resolver.buildJsonList(fetchMap, parentRow, row => row[actualAlias])
@@ -454,14 +457,22 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return resolver;
   }
 
-  public addDerivedListField(field: string, join: EquiJoinSpec, func: (row: Row) => Json): SqlQueryResolver {
-    const resolver = this.createChildResolver(this, this.resolveJoin(join));
+  public addDerivedListField(
+    field: string,
+    join: EquiJoinSpec | EquiJoinSpec[],
+    func: (row: Row) => Json
+  ): SqlQueryResolver {
+    const resolver = this.createChildResolver(this, this.resolvePrimaryJoin(join));
     this.addField(field, (parentRow, _, fetchMap) => resolver.buildJsonList(fetchMap, parentRow, func));
     return resolver;
   }
 
-  public addObjectListField(field: string, join: EquiJoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver {
-    const resolver = this.createChildResolver(this, this.resolveJoin(join), typeNameOrFn);
+  public addObjectListField(
+    field: string,
+    join: EquiJoinSpec | EquiJoinSpec[],
+    typeNameOrFn?: TypeNameOrFunction
+  ): SqlQueryResolver {
+    const resolver = this.createChildResolver(this, this.resolvePrimaryJoin(join), typeNameOrFn);
     this.addField(field, (parentRow, parentRowMap, fetchMap) =>
       resolver.buildObjectList(fetchMap, parentRow, parentRowMap)
     );
@@ -470,22 +481,22 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public createConnectionResolver(
     outerResolver: TableResolver & SqlQueryResolver,
-    join: EquiJoinSpec,
+    joins: EquiJoinSpec[],
     args: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction
   ): SqlConnectionChildResolver {
-    const resolver = this.resolverFactory.createChildConnection(this, outerResolver, join, args, typeNameOrFn);
+    const resolver = this.resolverFactory.createChildConnection(this, outerResolver, joins, args, typeNameOrFn);
     this.childResolvers.push(resolver.getNodeResolver());
     return resolver;
   }
 
   public addConnectionField(
     field: string,
-    join: EquiJoinSpec,
+    join: EquiJoinSpec | EquiJoinSpec[],
     args: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction
   ): SqlConnectionResolver {
-    const resolver = this.createConnectionResolver(this, this.resolveJoin(join), args, typeNameOrFn);
+    const resolver = this.createConnectionResolver(this, this.resolvePrimaryJoin(join), args, typeNameOrFn);
     this.addField(
       field,
       (row, parentRowMap, fetchMap) => resolver.buildResultFor(row, parentRowMap, fetchMap) as JsonObject

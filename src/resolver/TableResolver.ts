@@ -53,12 +53,21 @@ export class TableResolver extends FieldResolver {
     return join;
   }
 
+  public resolvePrimaryJoin<T extends JoinSpec>(join: T | T[]): T[] {
+    if (Array.isArray(join)) {
+      const [primaryJoin, ...rest] = join;
+      return [this.resolveJoin(primaryJoin), ...rest];
+    }
+    return [this.resolveJoin(join)];
+  }
+
   public addTableAlias(table: string, alias: string): void {
     const existing = this.tableAliases.get(table);
-    if (existing) {
+    if (!existing) {
+      this.tableAliases.set(table, alias);
+    } else if (existing !== alias) {
       throw new Error(`Table "${table}" already aliased as "${alias}"`);
     }
-    this.tableAliases.set(table, alias);
   }
 
   public dumpProperties(d: PropertyDumper): void {

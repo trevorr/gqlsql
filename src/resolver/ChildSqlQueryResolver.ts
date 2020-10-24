@@ -15,7 +15,7 @@ const WindowSubqueryAlias = 'windowed';
 
 export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlChildQueryResolver {
   private readonly parentResolver: KnexSqlQueryResolver;
-  private readonly join: EquiJoinSpec;
+  private readonly primaryJoin: EquiJoinSpec;
   private readonly fromSelects: string[] = [];
   private readonly toSelects: string[] = [];
 
@@ -23,28 +23,50 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     resolverFactory: InternalSqlResolverFactory,
     parentResolver: KnexSqlQueryResolver,
     outerResolver: SqlQueryResolver,
-    join: EquiJoinSpec,
+    joins: EquiJoinSpec[],
     args?: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>
   ) {
-    super(resolverFactory, parentResolver.getKnex(), join.toTable, args, typeNameOrFn, options, parentResolver.data);
+    super(
+      resolverFactory,
+      parentResolver.getKnex(),
+      joins[0].toTable,
+      getTableName(joins[joins.length - 1].toTable),
+      args,
+      typeNameOrFn,
+      options,
+      parentResolver.data
+    );
     this.parentResolver = parentResolver;
-    this.join = join;
+
+    const join = (this.primaryJoin = joins[0]);
+    const toTable = getTableName(join.toTable);
+    this.addTableAlias(toTable, join.toAlias || toTable);
     for (let i = 0; i < join.toColumns.length; ++i) {
       const fromSelect = outerResolver.addSelectColumn(join.fromColumns[i], join.fromTable);
       this.fromSelects.push(fromSelect);
-      const toSelect = this.addSelectColumn(join.toColumns[i], getTableName(join.toTable));
+      const toSelect = this.addSelectColumn(join.toColumns[i], toTable);
       this.toSelects.push(toSelect);
       this.addOrderByAlias(toSelect);
+    }
+
+    if (joins.length > 1) {
+      for (let i = 1; i < joins.length; ++i) {
+        this.addTable(joins[i]);
+      }
     }
   }
 
   public addObjectField(field: string, join?: JoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver {
     // possibly joining back to one of the parent tables?
-    if (join && isEquiJoin(join) && isSameKey(getFromKey((join = this.resolveJoin(join))), getToKey(this.join))) {
+    if (
+      join &&
+      isEquiJoin(join) &&
+      isSameKey(getFromKey((join = this.resolveJoin(join))), getToKey(this.primaryJoin))
+    ) {
       const toKey = getToKey(join);
-      let fromKey = getFromKey(this.join);
+      let fromKey = getFromKey(this.primaryJoin);
       for (;;) {
         // did we connect joins to target table?
         if (isSameKey(fromKey, toKey)) {
@@ -78,7 +100,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     */
     const limit = this.getLimit();
     if (Number.isInteger(limit) && !this.fetchFilters.length) {
-      const { toTable, toColumns } = this.join;
+      const { toTable, toColumns } = this.primaryJoin;
       const toTableName = getTableName(toTable);
       let sql = 'row_number() over (';
       let nextParam = 'partition by ??';
@@ -170,7 +192,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
   private async fetchRows(parentKeys: KeyValue[][]): Promise<Row[]> {
     if (!parentKeys.length) return [];
     const baseQuery = this.getBaseQuery().clone();
-    const { toTable, toColumns, toRestrictions = [] } = this.join;
+    const { toTable, toColumns, toRestrictions = [] } = this.primaryJoin;
     const toTableName = getTableName(toTable);
     const qualifiedColumns = toColumns.map(toColumn => getKnexSelectColumn({ table: toTableName, column: toColumn }));
     baseQuery.whereIn(qualifiedColumns, parentKeys);
@@ -187,7 +209,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
 
   private fetchTotalCounts(parentKeys: KeyValue[][]): Promise<Row[]> {
     const baseQuery = this.getBaseQuery().clone();
-    const { toTable, toColumns } = this.join;
+    const { toTable, toColumns } = this.primaryJoin;
     const toTableName = getTableName(toTable);
     const qualifiedColumns = toColumns.map(toColumn => getKnexSelectColumn({ table: toTableName, column: toColumn }));
     const countQuery = this.buildTotalCountQuery(
@@ -214,7 +236,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
   public dumpProperties(d: PropertyDumper): void {
     super.dumpProperties(d);
     d.addRef('parentResolver', this.parentResolver);
-    d.add('join', this.join);
+    d.add('join', this.primaryJoin);
   }
 }
 

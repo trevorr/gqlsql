@@ -163,11 +163,11 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public addColumnListField(
     field: string,
-    join: EquiJoinSpec,
+    join: EquiJoinSpec | EquiJoinSpec[],
     column: string,
     func?: (value: any, row: Row) => Json
   ): SqlQueryResolver {
-    const resolver = this.baseResolver.createChildResolver(this, this.resolveJoin(join));
+    const resolver = this.baseResolver.createChildResolver(this, this.resolvePrimaryJoin(join));
     const alias = resolver.addSelectColumn(column);
     this.addField(field, (parentRow, _, fetchMap) =>
       resolver.buildJsonList(fetchMap, parentRow, func ? row => func(row[alias], row) : row => row[alias])
@@ -177,11 +177,11 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public addExpressionListField(
     field: string,
-    join: EquiJoinSpec,
+    join: EquiJoinSpec | EquiJoinSpec[],
     expr: string | Knex.Raw,
     alias?: string
   ): SqlQueryResolver {
-    const resolver = this.baseResolver.createChildResolver(this, this.resolveJoin(join));
+    const resolver = this.baseResolver.createChildResolver(this, this.resolvePrimaryJoin(join));
     const actualAlias = resolver.addSelectExpression(expr, alias);
     this.addField(field, (parentRow, _, fetchMap) =>
       resolver.buildJsonList(fetchMap, parentRow, row => row[actualAlias])
@@ -189,14 +189,22 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return resolver;
   }
 
-  public addDerivedListField(field: string, join: EquiJoinSpec, func: (row: Row) => Json): SqlQueryResolver {
-    const resolver = this.baseResolver.createChildResolver(this, this.resolveJoin(join));
+  public addDerivedListField(
+    field: string,
+    join: EquiJoinSpec | EquiJoinSpec[],
+    func: (row: Row) => Json
+  ): SqlQueryResolver {
+    const resolver = this.baseResolver.createChildResolver(this, this.resolvePrimaryJoin(join));
     this.addField(field, (parentRow, _, fetchMap) => resolver.buildJsonList(fetchMap, parentRow, func));
     return resolver;
   }
 
-  public addObjectListField(field: string, join: EquiJoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver {
-    const resolver = this.baseResolver.createChildResolver(this, this.resolveJoin(join), typeNameOrFn);
+  public addObjectListField(
+    field: string,
+    join: EquiJoinSpec | EquiJoinSpec[],
+    typeNameOrFn?: TypeNameOrFunction
+  ): SqlQueryResolver {
+    const resolver = this.baseResolver.createChildResolver(this, this.resolvePrimaryJoin(join), typeNameOrFn);
     this.addField(field, (parentRow, parentRowMap, fetchMap) =>
       resolver.buildObjectList(fetchMap, parentRow, parentRowMap)
     );
@@ -205,11 +213,11 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public addConnectionField(
     field: string,
-    join: EquiJoinSpec,
+    join: EquiJoinSpec | EquiJoinSpec[],
     args: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction
   ): SqlConnectionResolver {
-    const resolver = this.baseResolver.createConnectionResolver(this, this.resolveJoin(join), args, typeNameOrFn);
+    const resolver = this.baseResolver.createConnectionResolver(this, this.resolvePrimaryJoin(join), args, typeNameOrFn);
     this.addField(
       field,
       (row, parentRowMap, fetchMap) => resolver.buildResultFor(row, parentRowMap, fetchMap) as JsonObject
