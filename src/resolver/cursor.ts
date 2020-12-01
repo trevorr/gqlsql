@@ -1,7 +1,12 @@
 import { QueryBuilder } from 'knex';
 import { Row } from './TableSpec';
 
-export function getCursorValue(value: any): string | number {
+export type CursorValue = string | number | null;
+
+export function getCursorValue(value: any): CursorValue {
+  if (value == null) {
+    return null;
+  }
   if (typeof value === 'number') {
     return value;
   }
@@ -20,24 +25,12 @@ export function makeCursor(row: Row, sortColumns: string[]): string {
   return Buffer.from(JSON.stringify(cursorRow)).toString('base64');
 }
 
-export function parseCursor(cursor: string): Row {
+export function parseCursor(cursor: string): Record<string, CursorValue> {
   return JSON.parse(Buffer.from(cursor, 'base64').toString('ascii'));
 }
 
 type OrderOperator = '<' | '>';
 type QueryBuilderFunc = (builder: QueryBuilder) => QueryBuilder;
-
-function appendCursorFilter(
-  prevFilter: QueryBuilderFunc,
-  prevField: string,
-  prevValue: any,
-  field: string,
-  operator: OrderOperator,
-  value: any
-): QueryBuilderFunc {
-  return builder =>
-    prevFilter(builder).orWhere(builder => builder.where(prevField, prevValue).andWhere(field, operator, value));
-}
 
 export function applyCursorFilter(
   query: QueryBuilder,
@@ -46,26 +39,53 @@ export function applyCursorFilter(
   sortFields: string[],
   whereFields: string[]
 ): QueryBuilder {
-  try {
-    const cursorFields = parseCursor(cursor);
-    let whereFunc: ((builder: QueryBuilder) => QueryBuilder) | undefined;
-    let prevField: string | undefined;
-    let prevValue;
-    for (let i = 0; i < sortFields.length; ++i) {
-      const value = cursorFields[sortFields[i]];
-      if (value == null) break;
-      const field = whereFields[i];
-      if (whereFunc == null) {
-        whereFunc = builder => builder.where(field, operator, value);
-      } else {
-        whereFunc = appendCursorFilter(whereFunc, prevField!, prevValue, field, operator, value);
+  if (sortFields.length > 0) {
+    try {
+      const cursorFields = parseCursor(cursor);
+
+      let whereFunc: QueryBuilderFunc | undefined;
+      const fieldValues: [string, CursorValue][] = [];
+      for (let i = 0; i < sortFields.length; ++i) {
+        const value = cursorFields[sortFields[i]] ?? null;
+        const field = whereFields[i];
+
+        const prevFieldValues = fieldValues.slice();
+        fieldValues.push([field, value]);
+
+        let fieldFunc: QueryBuilderFunc;
+        if (value != null) {
+          fieldFunc = builder => builder.where(field, operator, value);
+        } else if (operator === '>') {
+          fieldFunc = builder => builder.whereNotNull(field);
+        } else {
+          // skip field since nothing sorts before null
+          continue;
+        }
+
+        if (prevFieldValues.length > 0) {
+          const captureFieldFunc = fieldFunc;
+          // where(f, v) with v === null -> whereNull(f)
+          fieldFunc = builder =>
+            captureFieldFunc(prevFieldValues.reduce((b, [field, value]) => b.where(field, value), builder));
+        }
+
+        if (whereFunc) {
+          const captureWhereFunc = whereFunc;
+          whereFunc = builder => captureWhereFunc(builder).orWhere(fieldFunc);
+        } else {
+          whereFunc = fieldFunc;
+        }
       }
-      prevField = field;
-      prevValue = value;
+
+      if (whereFunc) {
+        query.where(whereFunc);
+      } else {
+        // all fields < null
+        query.whereRaw('0 = 1');
+      }
+    } catch {
+      // ignore invalid cursor
     }
-    if (whereFunc != null) {
-      query.where(whereFunc);
-    }
-  } catch {}
+  }
   return query;
 }
