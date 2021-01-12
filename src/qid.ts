@@ -24,15 +24,6 @@ export function splitQid(qid: string): [string, string?] {
   return parts.length > 1 ? [parts[1], parts[0]] : [parts[0]];
 }
 
-/** @deprecated */
-export function getRidFromQid(qid: string, meta?: TableMetadata): string {
-  const [randomId, tableId] = splitQid(qid);
-  if (tableId && meta && meta.tableId && tableId !== meta.tableId) {
-    throw new Error(`Unexpected prefix for ${meta.typeName} ID "${qid}"`);
-  }
-  return randomId;
-}
-
 export function getXidFromQid(qid: string, meta?: TableMetadata): string {
   const [externalId, tableId] = splitQid(qid);
   if (tableId && meta && meta.tableId && tableId !== meta.tableId) {
