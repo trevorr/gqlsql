@@ -19,11 +19,39 @@ export function qualifyXid(xid: string, meta: TableMetadata): string {
   throw new Error(`No external ID defined for ${meta.typeName}`);
 }
 
+// WARNING: should not be used with unqualified WKIDs that can contain underscores (_)
 export function splitQid(qid: string): [string, string?] {
   const parts = qid.split(/_|:/, 2);
   return parts.length > 1 ? [parts[1], parts[0]] : [parts[0]];
 }
 
+export function splitQrid(qrid: string): [string, string?] {
+  const parts = qrid.split('_', 2);
+  return parts.length > 1 ? [parts[1], parts[0]] : [parts[0]];
+}
+
+export function splitQwkid(qwkid: string): [string, string?] {
+  const parts = qwkid.split(':', 2);
+  return parts.length > 1 ? [parts[1], parts[0]] : [parts[0]];
+}
+
+export function getRidFromQrid(qid: string, meta?: TableMetadata): string {
+  const [externalId, tableId] = splitQrid(qid);
+  if (tableId && meta && meta.tableId && tableId !== meta.tableId) {
+    throw new Error(`Unexpected prefix for ${meta.typeName} ID "${qid}"`);
+  }
+  return externalId;
+}
+
+export function getWkidFromQwkid(qid: string, meta?: TableMetadata): string {
+  const [externalId, tableId] = splitQwkid(qid);
+  if (tableId && meta && meta.tableId && tableId !== meta.tableId) {
+    throw new Error(`Unexpected prefix for ${meta.typeName} ID "${qid}"`);
+  }
+  return externalId;
+}
+
+// WARNING: should not be used with unqualified WKIDs that can contain underscores (_)
 export function getXidFromQid(qid: string, meta?: TableMetadata): string {
   const [externalId, tableId] = splitQid(qid);
   if (tableId && meta && meta.tableId && tableId !== meta.tableId) {
