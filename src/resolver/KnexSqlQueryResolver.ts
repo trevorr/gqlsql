@@ -543,7 +543,9 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   public addFetchFilter(filter: FetchFilter): this {
-    this.fetchFilters.push(filter);
+    if (!this.fetchFilters.includes(filter)) {
+      this.fetchFilters.push(filter);
+    }
     return this;
   }
 
