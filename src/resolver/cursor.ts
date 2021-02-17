@@ -29,34 +29,39 @@ export function parseCursor(cursor: string): Record<string, CursorValue> {
   return JSON.parse(Buffer.from(cursor, 'base64').toString('ascii'));
 }
 
-type OrderOperator = '<' | '>';
 type QueryBuilderFunc = (builder: QueryBuilder) => QueryBuilder;
+
+export interface CursorField {
+  name: string;
+  qualifiedName: string;
+  descending: boolean;
+}
 
 export function applyCursorFilter(
   query: QueryBuilder,
   cursor: string,
-  operator: OrderOperator,
-  sortFields: string[],
-  whereFields: string[]
+  fields: CursorField[],
+  before: boolean
 ): QueryBuilder {
-  if (sortFields.length > 0) {
+  if (fields.length > 0) {
     try {
       const cursorFields = parseCursor(cursor);
 
       let whereFunc: QueryBuilderFunc | undefined;
       const fieldValues: [string, CursorValue][] = [];
-      for (let i = 0; i < sortFields.length; ++i) {
-        const value = cursorFields[sortFields[i]] ?? null;
-        const field = whereFields[i];
+      for (const field of fields) {
+        const { name, qualifiedName, descending } = field;
+        const value = cursorFields[name] ?? null;
 
         const prevFieldValues = fieldValues.slice();
-        fieldValues.push([field, value]);
+        fieldValues.push([qualifiedName, value]);
 
+        const operator = (descending && !before) || (!descending && before) ? '<' : '>';
         let fieldFunc: QueryBuilderFunc;
         if (value != null) {
-          fieldFunc = builder => builder.where(field, operator, value);
+          fieldFunc = builder => builder.where(qualifiedName, operator, value);
         } else if (operator === '>') {
-          fieldFunc = builder => builder.whereNotNull(field);
+          fieldFunc = builder => builder.whereNotNull(qualifiedName);
         } else {
           // skip field since nothing sorts before null
           continue;
