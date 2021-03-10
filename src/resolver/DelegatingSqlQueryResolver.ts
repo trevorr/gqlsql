@@ -86,12 +86,12 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this;
   }
 
-  public addSelectColumn(column: string, table = this.defaultTable): string {
-    return this.baseResolver.addSelectColumnFromAlias(column, this.getTableAlias(table));
+  public addSelectColumn(column: string, table = this.defaultTable, columnAlias?: string): string {
+    return this.baseResolver.addSelectColumnFromAlias(column, this.getTableAlias(table), columnAlias);
   }
 
-  public addSelectColumnFromAlias(column: string, tableAlias: string): string {
-    return this.baseResolver.addSelectColumnFromAlias(column, tableAlias);
+  public addSelectColumnFromAlias(column: string, tableAlias: string, columnAlias?: string): string {
+    return this.baseResolver.addSelectColumnFromAlias(column, tableAlias, columnAlias);
   }
 
   public addSelectExpression(expr: string | Knex.Raw, alias?: string): string {

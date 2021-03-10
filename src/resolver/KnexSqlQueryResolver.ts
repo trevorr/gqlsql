@@ -145,19 +145,19 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return this;
   }
 
-  public addSelectColumn(column: string, table = this.defaultTable): string {
-    return this.addSelectColumnFromAlias(column, this.getTableAlias(table));
+  public addSelectColumn(column: string, table = this.defaultTable, columnAlias?: string): string {
+    return this.addSelectColumnFromAlias(column, this.getTableAlias(table), columnAlias);
   }
 
-  public addSelectColumnFromAlias(column: string, tableAlias: string): string {
+  public addSelectColumnFromAlias(column: string, tableAlias: string, columnAlias?: string): string {
     this.checkTableAlias(tableAlias, column);
-    let name = column;
-    const select = { column, table: tableAlias };
-    const existing = this.selects.get(column);
+    let name = columnAlias ?? column;
+    const select = { column, table: tableAlias, alias: columnAlias };
+    const existing = this.selects.get(name);
     if (!existing) {
-      this.selects.set(column, select);
+      this.selects.set(name, select);
     } else if (!isSameSelect(select, existing)) {
-      name = this.addSelectAlias(select, `${tableAlias}_${column}`);
+      name = this.addSelectAlias(select, columnAlias ?? `${tableAlias}_${column}`);
     }
     return name;
   }
