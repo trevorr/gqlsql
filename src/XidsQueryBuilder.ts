@@ -11,7 +11,7 @@ export class XidsQueryBuilder {
   public constructor(
     knex: Knex | Knex.Transaction,
     private readonly sqlExecutor: SqlExecutor,
-    private readonly throwNotFound: (message: string, id: string | number) => never,
+    private readonly throwNotFound: (description: string | TypeMetadata, id?: string | number) => never,
     private readonly xids: string[],
     meta: TypeMetadata
   ) {
@@ -62,14 +62,14 @@ export class XidsQueryBuilder {
     return this.query;
   }
 
-  public async getIds(): Promise<string[]> {
+  public async getIds(): Promise<(string | number)[]> {
     const rows = await this.selectId().execute();
     const oidIdMap = new Map(rows.map(row => [row[this.oidColumn], row[this.tableMeta.idColumns![0]]]));
     const ids = [];
     for (const xid of this.xids) {
       const id = oidIdMap.get(splitQid(xid)[0]);
       if (id == null) {
-        this.throwNotFound(`Unknown ${this.tableMeta.typeName} ID "${xid}"`, xid);
+        this.throwNotFound(this.tableMeta, xid);
       }
       ids.push(id);
     }

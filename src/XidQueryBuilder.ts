@@ -10,7 +10,7 @@ export class XidQueryBuilder {
   public constructor(
     knex: Knex | Knex.Transaction,
     private readonly sqlExecutor: SqlExecutor,
-    private readonly throwNotFound: (message: string, id: string | number) => never,
+    private readonly throwNotFound: (description: string | TypeMetadata, id?: string | number) => never,
     private readonly xid: string,
     meta: TypeMetadata
   ) {
@@ -47,15 +47,15 @@ export class XidQueryBuilder {
     return this.query;
   }
 
-  public async lookupId(): Promise<string | null> {
+  public async lookupId(): Promise<string | number | null> {
     const rows = await this.selectId().execute();
     return rows.length > 0 ? rows[0][this.tableMeta.idColumns![0]] : null;
   }
 
-  public async getId(): Promise<string> {
+  public async getId(): Promise<string | number> {
     const rows = await this.selectId().execute();
     if (!rows.length) {
-      this.throwNotFound(`Unknown ${this.tableMeta.typeName} ID "${this.xid}"`, this.xid);
+      this.throwNotFound(this.tableMeta, this.xid);
     }
     return rows[0][this.tableMeta.idColumns![0]];
   }
@@ -71,7 +71,7 @@ export class XidQueryBuilder {
   public async updateOrThrow(data: object | object[]): Promise<number> {
     const count = this.update(data);
     if (!count) {
-      this.throwNotFound(`Unknown ${this.tableMeta.typeName} ID "${this.xid}"`, this.xid);
+      this.throwNotFound(this.tableMeta, this.xid);
     }
     return count;
   }

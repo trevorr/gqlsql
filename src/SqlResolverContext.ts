@@ -11,19 +11,23 @@ export interface SqlResolverContext {
   resolverFactory: SqlResolverFactory;
   forXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): XidQueryBuilder;
   forXids(xids: string[], meta: TypeMetadata, trx?: Knex.Transaction): XidsQueryBuilder;
-  getIdForXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): Promise<string>;
+  getIdForXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): Promise<string | number>;
   getIdForXid(
     xid: string | null | undefined,
     meta: TypeMetadata,
     trx?: Knex.Transaction
-  ): Promise<string | null | undefined>;
+  ): Promise<string | number | null | undefined>;
   getIdsForXids(
     xids: string[] | null | undefined,
     meta: TypeMetadata,
     trx?: Knex.Transaction
-  ): Promise<string[] | null | undefined>;
-  queryRow(query: Knex.QueryBuilder, description?: string): Promise<Record<string, any>>;
+  ): Promise<(string | number)[] | null | undefined>;
+  queryRow(
+    query: Knex.QueryBuilder,
+    description?: string | TypeMetadata,
+    id?: string | number
+  ): Promise<Record<string, any>>;
   queryOptionalRow(query: Knex.QueryBuilder): Promise<Record<string, any>>;
-  throwNotFound(message: string, id: string | number): never;
+  throwNotFound(description: string | TypeMetadata, id?: string | number): never;
   extend<Props extends {}>(props: Props): this & Props;
 }

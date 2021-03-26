@@ -31,17 +31,17 @@ class SqlResolverContextImpl implements SqlResolverContext {
     return new XidsQueryBuilder(trx || this.knex, this.sqlExecutor, this.throwNotFound.bind(this), xids, meta);
   }
 
-  public async getIdForXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): Promise<string>;
+  public async getIdForXid(xid: string, meta: TypeMetadata, trx?: Knex.Transaction): Promise<string | number>;
   public async getIdForXid(
     xid: string | null | undefined,
     meta: TypeMetadata,
     trx?: Knex.Transaction
-  ): Promise<string | null | undefined>;
+  ): Promise<string | number | null | undefined>;
   public async getIdForXid(
     xid: string | null | undefined,
     meta: TypeMetadata,
     trx?: Knex.Transaction
-  ): Promise<string | null | undefined> {
+  ): Promise<string | number | null | undefined> {
     return xid && this.forXid(xid, meta, trx).getId();
   }
 
@@ -49,14 +49,18 @@ class SqlResolverContextImpl implements SqlResolverContext {
     xids: string[] | null | undefined,
     meta: TypeMetadata,
     trx?: Knex.Transaction
-  ): Promise<string[] | null | undefined> {
+  ): Promise<(string | number)[] | null | undefined> {
     return xids && xids.length > 0 ? this.forXids(xids, meta, trx).getIds() : undefined;
   }
 
-  public async queryRow(query: Knex.QueryBuilder, description = 'Row'): Promise<Record<string, any>> {
+  public async queryRow(
+    query: Knex.QueryBuilder,
+    description: string | TypeMetadata = 'Row',
+    id?: string | number
+  ): Promise<Record<string, any>> {
     const rows = await this.sqlExecutor.execute(query);
     if (!rows.length) {
-      throw new this.userInputError(`${description} not found`, { code: 'NOT_FOUND' });
+      this.throwNotFound(description, id);
     }
     return rows[0];
   }
@@ -66,8 +70,14 @@ class SqlResolverContextImpl implements SqlResolverContext {
     return rows.length ? rows[0] : {};
   }
 
-  public throwNotFound(message: string, id: string | number): never {
-    throw new this.userInputError(message, { code: 'NOT_FOUND', id });
+  public throwNotFound(description: string | TypeMetadata, id?: string | number): never {
+    if (typeof description !== 'string') {
+      description = description.typeName;
+      if (id) {
+        description += ` with ID "${id}"`;
+      }
+    }
+    throw new this.userInputError(`${description} not found`, { code: 'NOT_FOUND', id });
   }
 
   public extend<Props extends {}>(props: Props): this & Props {
