@@ -236,8 +236,10 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       if (join.forced && !ext.applied) {
         table = this.applyJoin(this.baseQuery, join);
         ext.applied = true;
-      } else {
+      } else if (!join.toAlias) {
         table = getTableName(join.toTable);
+      } else {
+        table = join.toAlias;
       }
     } else {
       table = join.toAlias;
