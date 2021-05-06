@@ -52,7 +52,7 @@
     "knex": "^0.21.15",
     "map-obj": "^4.1.0",
     "snake-case": "^3.0.3",
-    "typescript-memoize": "^1.0.0-alpha.3"
+    "typescript-memoize": "^1.0.1"
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.1",
