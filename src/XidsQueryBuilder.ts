@@ -1,10 +1,11 @@
 import Knex from 'knex';
 import { TableMetadata, TypeMetadata } from './meta';
-import { resolveQid, splitQid } from './qid';
+import { resolveQid } from './qid';
 import { Row, SqlExecutor } from './resolver';
 
 export class XidsQueryBuilder {
   private readonly tableMeta: TableMetadata;
+  private readonly oids: string[];
   private readonly oidColumn: string;
   private readonly query: Knex.QueryBuilder;
 
@@ -18,30 +19,24 @@ export class XidsQueryBuilder {
     if (!xids.length) {
       throw new Error('ID array cannot be empty');
     }
-    let oids, oidColumn;
-    if ('wellKnownIdColumn' in meta) {
-      this.tableMeta = meta;
-      oids = xids;
-      oidColumn = meta.wellKnownIdColumn;
-    } else {
-      const resolved = xids.map(xid => resolveQid(xid, meta));
-      this.tableMeta = resolved[0][1];
-      const otherMetaIndex = resolved.findIndex(r => r[1] !== this.tableMeta);
-      if (otherMetaIndex >= 0) {
-        throw new Error(
-          `Cannot resolve IDs of multiple types: ${this.tableMeta.typeName} and ${resolved[otherMetaIndex][1].typeName}`
-        );
-      }
-      oids = resolved.map(r => r[0]);
-      oidColumn = this.tableMeta.randomIdColumn;
+    const resolved = xids.map(xid => resolveQid(xid, meta));
+    const tableMeta = resolved[0][1];
+    const otherMetaIndex = resolved.findIndex(r => r[1] !== tableMeta);
+    if (otherMetaIndex >= 0) {
+      throw new Error(
+        `Cannot resolve IDs of multiple types: ${tableMeta.typeName} and ${resolved[otherMetaIndex][1].typeName}`
+      );
     }
+    this.oids = resolved.map(r => r[0]);
+    const oidColumn = tableMeta.randomIdColumn || tableMeta.wellKnownIdColumn;
     if (!oidColumn) {
-      throw new Error(`External ID column not found in metadata for ${this.tableMeta.typeName}`);
+      throw new Error(`External ID column not found in metadata for ${tableMeta.typeName}`);
     }
+    this.tableMeta = tableMeta;
     this.oidColumn = oidColumn;
-    this.query = knex(this.tableMeta.tableName)
+    this.query = knex(tableMeta.tableName)
       .select(oidColumn)
-      .whereIn(oidColumn, oids);
+      .whereIn(oidColumn, this.oids);
   }
 
   public configure(config: (query: Knex.QueryBuilder) => void): this {
@@ -66,10 +61,10 @@ export class XidsQueryBuilder {
     const rows = await this.selectId().execute();
     const oidIdMap = new Map(rows.map(row => [row[this.oidColumn], row[this.tableMeta.idColumns![0]]]));
     const ids = [];
-    for (const xid of this.xids) {
-      const id = oidIdMap.get(splitQid(xid)[0]);
+    for (let i = 0; i < this.oids.length; ++i) {
+      const id = oidIdMap.get(this.oids[i]);
       if (id == null) {
-        this.throwNotFound(this.tableMeta, xid);
+        this.throwNotFound(this.tableMeta, this.xids[i]);
       }
       ids.push(id);
     }

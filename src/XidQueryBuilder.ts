@@ -14,19 +14,13 @@ export class XidQueryBuilder {
     private readonly xid: string,
     meta: TypeMetadata
   ) {
-    let oid, oidColumn;
-    if ('wellKnownIdColumn' in meta) {
-      this.tableMeta = meta;
-      oid = xid;
-      oidColumn = meta.wellKnownIdColumn;
-    } else {
-      [oid, this.tableMeta] = resolveQid(xid, meta);
-      oidColumn = this.tableMeta.randomIdColumn;
-    }
+    const [oid, tableMeta] = resolveQid(xid, meta);
+    const oidColumn = tableMeta.randomIdColumn || tableMeta.wellKnownIdColumn;
     if (!oidColumn) {
-      throw new Error(`External ID column not found in metadata for ${this.tableMeta.typeName}`);
+      throw new Error(`External ID column not found in metadata for ${tableMeta.typeName}`);
     }
-    this.query = knex(this.tableMeta.tableName).where(oidColumn, oid);
+    this.tableMeta = tableMeta;
+    this.query = knex(tableMeta.tableName).where(oidColumn, oid);
   }
 
   public configure(config: (query: Knex.QueryBuilder) => void): this {
