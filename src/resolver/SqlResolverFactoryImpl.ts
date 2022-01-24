@@ -1,4 +1,4 @@
-import Knex from 'knex';
+import { Knex } from 'knex';
 import { ResolverArgs, SqlQueryResolver, SqlResolverFactory, SqlResolverOptions, TypeNameOrFunction } from './api';
 import { ChildSqlConnectionResolver } from './ChildSqlConnectionResolver';
 import { ChildSqlQueryResolver } from './ChildSqlQueryResolver';

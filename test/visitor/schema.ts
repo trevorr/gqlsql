@@ -1,6 +1,7 @@
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { IResolvers } from '@graphql-tools/utils';
 import { GraphQLSchema } from 'graphql';
 import gql from 'graphql-tag';
-import { IResolvers, makeExecutableSchema } from 'graphql-tools';
 
 const schema = gql`
   schema {
@@ -58,7 +59,7 @@ export function getExecutableSchema<TContext = any>(
   return makeExecutableSchema({
     typeDefs: schema,
     resolvers,
-    resolverValidationOptions: { requireResolversForResolveType: false }
+    resolverValidationOptions: { requireResolversForResolveType: 'ignore' },
   });
 }
 

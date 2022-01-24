@@ -25,5 +25,5 @@ export function isTableMetadata(meta: TypeMetadata): meta is TableMetadata {
 }
 
 export function getTableNames(meta: TypeMetadata): string[] {
-  return isTableMetadata(meta) ? [meta.tableName] : Object.values(meta.tableIds).map(m => m.tableName);
+  return isTableMetadata(meta) ? [meta.tableName] : Object.values(meta.tableIds).map((m) => m.tableName);
 }

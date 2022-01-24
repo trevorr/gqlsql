@@ -7,5 +7,5 @@ export const EdgeVisitors: ShallowFieldVisitors<SqlEdgeResolver, SqlQueryResolve
   },
   node(context, info, visitors): void {
     walkSelections(context.addNode(info.fieldName), info, visitors);
-  }
+  },
 };

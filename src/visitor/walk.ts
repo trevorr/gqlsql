@@ -10,8 +10,9 @@ import {
   isInterfaceType,
   isObjectType,
   isUnionType,
+  Kind,
   SelectionSetNode,
-  TypeNameMetaFieldDef
+  TypeNameMetaFieldDef,
 } from 'graphql';
 import { GraphQLVisitorInfo } from './GraphQLVisitorInfo';
 import { isTrueValue } from './values';
@@ -76,7 +77,7 @@ function walkField<TContext, TNestedContext>(
       afterVisitor(context, info, visitors);
     }
   } else {
-    walkSelections(context, info, (visitors as unknown) as TypeVisitors<TContext>, undefined, options);
+    walkSelections(context, info, visitors as unknown as TypeVisitors<TContext>, undefined, options);
   }
   return context;
 }
@@ -158,17 +159,17 @@ function walkSelectionSet<TContext, TNestedContext>(
     const { directives } = selection;
     /* istanbul ignore else: typed as optional but always appears set even if empty */
     if (directives) {
-      const skip = directives.find(d => d.name.value === 'skip');
+      const skip = directives.find((d) => d.name.value === 'skip');
       if (skip && skip.arguments && isTrueValue(skip.arguments[0].value, info.variableValues)) {
         continue;
       }
-      const include = directives.find(d => d.name.value === 'include');
+      const include = directives.find((d) => d.name.value === 'include');
       if (include && (!include.arguments || !isTrueValue(include.arguments[0].value, info.variableValues))) {
         continue;
       }
     }
     switch (selection.kind) {
-      case 'FragmentSpread': {
+      case Kind.FRAGMENT_SPREAD: {
         const fragmentName = selection.name.value;
         const fragment = info.fragments[fragmentName];
         const typeName = fragment.typeCondition.name.value;
@@ -184,7 +185,7 @@ function walkSelectionSet<TContext, TNestedContext>(
         }
         break;
       }
-      case 'InlineFragment': {
+      case Kind.INLINE_FRAGMENT: {
         let fragmentType;
         if (selection.typeCondition) {
           const typeName = selection.typeCondition.name.value;
@@ -204,21 +205,23 @@ function walkSelectionSet<TContext, TNestedContext>(
         break;
       }
       default: {
-        const fieldInfo = {
+        const returnType = getFieldType(parentType, selection.name.value);
+        const fieldInfo: GraphQLVisitorInfo = {
           ...info,
           fieldName: selection.name.value,
           fieldNode: selection,
-          returnType: getFieldType(parentType, selection.name.value),
+          returnType,
           parentType,
           path: {
             prev: info.path,
-            key: getResponseKey(selection)
-          }
+            key: getResponseKey(selection),
+            typename: getNamedType(returnType).name,
+          },
         };
         if (fieldVisitors) {
           walkField(context, fieldInfo, visitors, fieldVisitors);
         } else {
-          const v = (visitors as unknown) as TypeVisitors<TContext>;
+          const v = visitors as unknown as TypeVisitors<TContext>;
           walkField(context, fieldInfo, v, v[parentType.name]);
         }
       }

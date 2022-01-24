@@ -3,11 +3,11 @@ import Knex from 'knex';
 import { applyCursorFilter, CursorField, getCursorValue, makeCursor, parseCursor } from '../../src/resolver/cursor';
 
 const knex = Knex({
-  client: 'mysql2'
+  client: 'mysql2',
 });
 
 function toCursorFields(...columns: string[]): CursorField[] {
-  return columns.map(column => {
+  return columns.map((column) => {
     const match = /^((?:\w+\.)?(\w+))(?:\s+(asc|desc))?$/i.exec(column);
     if (!match) {
       throw new Error(`Invalid cursor column: ${column}`);

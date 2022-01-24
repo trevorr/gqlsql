@@ -4,8 +4,10 @@ import { ChildSqlQueryResolver } from './ChildSqlQueryResolver';
 import { FetchMap, ParentRowMap, SqlConnectionChildResolver } from './internal';
 import { Row } from './TableSpec';
 
-export class ChildSqlConnectionResolver extends AbstractSqlConnectionResolver<ChildSqlQueryResolver>
-  implements SqlConnectionChildResolver {
+export class ChildSqlConnectionResolver
+  extends AbstractSqlConnectionResolver<ChildSqlQueryResolver>
+  implements SqlConnectionChildResolver
+{
   public buildResultFor(
     parentRow: Row,
     parentRowMap: ParentRowMap,

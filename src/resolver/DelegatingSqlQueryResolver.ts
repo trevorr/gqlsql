@@ -1,5 +1,5 @@
 import { GraphQLResolveInfo } from 'graphql';
-import Knex from 'knex';
+import { Knex } from 'knex';
 import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
 import {
   FetchFilter,
@@ -9,7 +9,7 @@ import {
   SqlConnectionResolver,
   SqlQueryResolver,
   SqlTypeVisitors,
-  TypeNameOrFunction
+  TypeNameOrFunction,
 } from './api';
 import { BaseSqlQueryResolver, FetchMap, ParentRowMap } from './internal';
 import { EquiJoinSpec, isEquiJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
@@ -100,7 +100,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public addCoalesceColumn(column: string, tables: string[]): string {
     return this.baseResolver.addCoalesceExpressionFromAliases(
-      tables.map(table => [this.getTableAlias(table), column]),
+      tables.map((table) => [this.getTableAlias(table), column]),
       column
     );
   }
@@ -122,7 +122,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this {
     const alias = this.addSelectColumn(column, table);
-    this.addField(field, func ? row => func(row[alias], row) : row => row[alias]);
+    this.addField(field, func ? (row) => func(row[alias], row) : (row) => row[alias]);
     return this;
   }
 
@@ -133,13 +133,13 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     func?: (value: any, row: Row) => Json
   ): this {
     const alias = this.addCoalesceColumn(column, tables);
-    this.addField(field, func ? row => func(row[alias], row) : row => row[alias]);
+    this.addField(field, func ? (row) => func(row[alias], row) : (row) => row[alias]);
     return this;
   }
 
   public addExpressionField(field: string, expr: string | Knex.Raw, alias?: string): this {
     const actualAlias = this.addSelectExpression(expr, alias);
-    this.addField(field, row => row[actualAlias]);
+    this.addField(field, (row) => row[actualAlias]);
     return this;
   }
 
@@ -170,7 +170,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     const resolver = this.baseResolver.createChildResolver(this, this.resolvePrimaryJoin(join));
     const alias = resolver.addSelectColumn(column);
     this.addField(field, (parentRow, _, fetchMap) =>
-      resolver.buildJsonList(fetchMap, parentRow, func ? row => func(row[alias], row) : row => row[alias])
+      resolver.buildJsonList(fetchMap, parentRow, func ? (row) => func(row[alias], row) : (row) => row[alias])
     );
     return resolver;
   }
@@ -184,7 +184,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     const resolver = this.baseResolver.createChildResolver(this, this.resolvePrimaryJoin(join));
     const actualAlias = resolver.addSelectExpression(expr, alias);
     this.addField(field, (parentRow, _, fetchMap) =>
-      resolver.buildJsonList(fetchMap, parentRow, row => row[actualAlias])
+      resolver.buildJsonList(fetchMap, parentRow, (row) => row[actualAlias])
     );
     return resolver;
   }
@@ -217,7 +217,12 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     args: ResolverArgs,
     typeNameOrFn?: TypeNameOrFunction
   ): SqlConnectionResolver {
-    const resolver = this.baseResolver.createConnectionResolver(this, this.resolvePrimaryJoin(join), args, typeNameOrFn);
+    const resolver = this.baseResolver.createConnectionResolver(
+      this,
+      this.resolvePrimaryJoin(join),
+      args,
+      typeNameOrFn
+    );
     this.addField(
       field,
       (row, parentRowMap, fetchMap) => resolver.buildResultFor(row, parentRowMap, fetchMap) as JsonObject

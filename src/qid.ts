@@ -70,7 +70,7 @@ export function resolveQid(qid: string, meta: TypeMetadata): [string, TableMetad
 
   const tableMetas = Object.values(meta.tableIds);
 
-  if (tableMetas.some(m => m.tableId && m.randomIdColumn)) {
+  if (tableMetas.some((m) => m.tableId && m.randomIdColumn)) {
     const [externalId, tableId] = splitQrid(qid);
     if (tableId) {
       assumedTableId = tableId;
@@ -81,7 +81,7 @@ export function resolveQid(qid: string, meta: TypeMetadata): [string, TableMetad
     }
   }
 
-  if (tableMetas.some(m => m.tableId && m.wellKnownIdColumn)) {
+  if (tableMetas.some((m) => m.tableId && m.wellKnownIdColumn)) {
     const [externalId, tableId] = splitQwkid(qid);
     if (tableId) {
       assumedTableId = tableId;
@@ -104,27 +104,27 @@ export function addQidField<T extends SqlQueryResolver>(resolver: T, field: stri
 export function addQidField<T extends SqlFieldResolver>(resolver: T, field: string, meta: TypeMetadata): T {
   if (isTableMetadata(meta)) {
     if (meta.randomIdColumn) {
-      resolver.addColumnField(field, meta.randomIdColumn, meta.tableName, rid => joinQrid(rid, meta.tableId));
+      resolver.addColumnField(field, meta.randomIdColumn, meta.tableName, (rid) => joinQrid(rid, meta.tableId));
     } else if (meta.wellKnownIdColumn) {
-      resolver.addColumnField(field, meta.wellKnownIdColumn, meta.tableName, wkid => joinQwkid(wkid, meta.tableId));
+      resolver.addColumnField(field, meta.wellKnownIdColumn, meta.tableName, (wkid) => joinQwkid(wkid, meta.tableId));
     } else {
       throw new Error(`No external ID defined for ${meta.typeName}`);
     }
   } else {
-    const queryResolver = (resolver as SqlFieldResolver) as SqlQueryResolver;
-    const metas = Object.values(meta.tableIds).filter(meta => queryResolver.hasTable(meta.tableName));
-    const noRidMeta = metas.find(meta => !meta.randomIdColumn && !meta.wellKnownIdColumn);
+    const queryResolver = resolver as SqlFieldResolver as SqlQueryResolver;
+    const metas = Object.values(meta.tableIds).filter((meta) => queryResolver.hasTable(meta.tableName));
+    const noRidMeta = metas.find((meta) => !meta.randomIdColumn && !meta.wellKnownIdColumn);
     if (noRidMeta) {
       throw new Error(`No external ID defined for ${noRidMeta.typeName}`);
     }
     const xidColumn = queryResolver.addCoalesceExpression(
-      metas.map(meta => [meta.tableName, meta.randomIdColumn || meta.wellKnownIdColumn!]),
+      metas.map((meta) => [meta.tableName, meta.randomIdColumn || meta.wellKnownIdColumn!]),
       'xid'
     );
-    resolver.addDerivedField(field, row => {
+    resolver.addDerivedField(field, (row) => {
       const xid = row[xidColumn];
       const typeName = queryResolver.getTypeNameFromRow(row);
-      const actualMeta = (meta.objectTypes || metas).find(meta => meta.typeName === typeName);
+      const actualMeta = (meta.objectTypes || metas).find((meta) => meta.typeName === typeName);
       return actualMeta ? qualifyXid(xid, actualMeta) : xid;
     });
   }

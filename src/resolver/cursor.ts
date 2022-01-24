@@ -1,4 +1,4 @@
-import { QueryBuilder } from 'knex';
+import { Knex } from 'knex';
 import { Row } from './TableSpec';
 
 export type CursorValue = string | number | null;
@@ -29,7 +29,7 @@ export function parseCursor(cursor: string): Record<string, CursorValue> {
   return JSON.parse(Buffer.from(cursor, 'base64').toString('ascii'));
 }
 
-type QueryBuilderFunc = (builder: QueryBuilder) => QueryBuilder;
+type QueryBuilderFunc = (builder: Knex.QueryBuilder) => Knex.QueryBuilder;
 
 export interface CursorField {
   name: string;
@@ -38,11 +38,11 @@ export interface CursorField {
 }
 
 export function applyCursorFilter(
-  query: QueryBuilder,
+  query: Knex.QueryBuilder,
   cursor: string,
   fields: CursorField[],
   before: boolean
-): QueryBuilder {
+): Knex.QueryBuilder {
   if (fields.length > 0) {
     try {
       const cursorFields = parseCursor(cursor);
@@ -59,9 +59,9 @@ export function applyCursorFilter(
         const operator = (descending && !before) || (!descending && before) ? '<' : '>';
         let fieldFunc: QueryBuilderFunc;
         if (value != null) {
-          fieldFunc = builder => builder.where(qualifiedName, operator, value);
+          fieldFunc = (builder) => builder.where(qualifiedName, operator, value);
         } else if (operator === '>') {
-          fieldFunc = builder => builder.whereNotNull(qualifiedName);
+          fieldFunc = (builder) => builder.whereNotNull(qualifiedName);
         } else {
           // skip field since nothing sorts before null
           continue;
@@ -70,13 +70,13 @@ export function applyCursorFilter(
         if (prevFieldValues.length > 0) {
           const captureFieldFunc = fieldFunc;
           // where(f, v) with v === null -> whereNull(f)
-          fieldFunc = builder =>
+          fieldFunc = (builder) =>
             captureFieldFunc(prevFieldValues.reduce((b, [field, value]) => b.where(field, value), builder));
         }
 
         if (whereFunc) {
           const captureWhereFunc = whereFunc;
-          whereFunc = builder => captureWhereFunc(builder).orWhere(fieldFunc);
+          whereFunc = (builder) => captureWhereFunc(builder).orWhere(fieldFunc);
         } else {
           whereFunc = fieldFunc;
         }

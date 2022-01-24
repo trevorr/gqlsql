@@ -9,7 +9,7 @@ import {
   ShallowFieldVisitors,
   TypeVisitors,
   walk,
-  walkSelections
+  walkSelections,
 } from '../../src/visitor';
 import query from './query';
 import { getExecutableSchema } from './schema';
@@ -31,7 +31,7 @@ describe('walk', () => {
         expect(ctx).to.equal(context);
         fieldVisitor(info.fieldName);
         return ctx;
-      }
+      },
     };
     const personVisitors: FieldVisitors<Context> = {
       ...nodeVisitors,
@@ -49,7 +49,7 @@ describe('walk', () => {
         expect(ctx).to.equal(context);
         fieldVisitor(info.fieldName);
         return ctx;
-      }
+      },
     };
     const petVisitors: FieldVisitors<Context> = {
       ...nodeVisitors,
@@ -57,7 +57,7 @@ describe('walk', () => {
         expect(ctx).to.equal(context);
         fieldVisitor(info.fieldName);
         return ctx;
-      }
+      },
     };
     const connectionVisitors: FieldVisitors<Context> = {
       edges(ctx, info) {
@@ -78,27 +78,33 @@ describe('walk', () => {
         expect(info.path.key).to.eql('count');
         fieldVisitor(info.fieldName);
         return ctx;
-      }
+      },
     };
     const visitors: TypeVisitors<Context> = {
       Node: nodeVisitors,
       Friend: nodeVisitors,
       Person: personVisitors,
       Pet: petVisitors,
-      FriendConnection: connectionVisitors
+      FriendConnection: connectionVisitors,
     };
     const resolvers = {
       Query: {
-        person(parent: {}, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
+        person(parent: unknown, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
           expect(parent).to.equal(root);
           expect(args.id).to.equal(5);
           walk(context, info, visitors);
-        }
-      }
+        },
+      },
     };
-    const result = await execute(getExecutableSchema(resolvers), query, root, context, {
-      skipId: false,
-      includeCount: true
+    const result = await execute({
+      schema: getExecutableSchema(resolvers),
+      document: query,
+      rootValue: root,
+      contextValue: context,
+      variableValues: {
+        skipId: false,
+        includeCount: true,
+      },
     });
     expect(result.errors).to.be.undefined;
 
@@ -127,7 +133,7 @@ describe('walk', () => {
         fieldVisitor(info.fieldName);
         return ctx;
       },
-      [FieldVisitorDefault]: walk
+      [FieldVisitorDefault]: walk,
     };
     const edgeVisitors: ShallowFieldVisitors<EdgeContext, Context> = {
       cursor(ctx, info): void {
@@ -138,7 +144,7 @@ describe('walk', () => {
         expect(ctx).to.be.an.instanceOf(EdgeContext);
         fieldVisitor(info.fieldName);
         walkSelections(unionContext, info, visitors, friendVisitors);
-      }
+      },
     };
     const connectionVisitors: ShallowFieldVisitors<ConnectionContext, Context> = {
       edges(ctx, info, visitors) {
@@ -159,7 +165,7 @@ describe('walk', () => {
         expect(ctx).to.be.an.instanceOf(ConnectionContext);
         expect(info.path.key).to.eql('count');
         fieldVisitor(info.fieldName);
-      }
+      },
     };
     const personVisitors: FieldVisitors<Context> = {
       firstName(ctx, info) {
@@ -176,31 +182,37 @@ describe('walk', () => {
         expect(ctx).to.be.an.instanceOf(Context);
         fieldVisitor(info.fieldName);
         walkSelections(connectionContext, info, visitors, connectionVisitors);
-      }
+      },
     };
     const petVisitors: FieldVisitors<Context> = {
       name(ctx, info) {
         expect(ctx).to.be.an.instanceOf(Context);
         fieldVisitor(info.fieldName);
         return ctx;
-      }
+      },
     };
     const visitors: TypeVisitors<Context> = {
       Person: personVisitors,
-      Pet: petVisitors
+      Pet: petVisitors,
     };
     const resolvers = {
       Query: {
-        person(parent: {}, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
+        person(parent: unknown, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
           expect(parent).to.equal(root);
           expect(args.id).to.equal(5);
           walk(context, info, visitors);
-        }
-      }
+        },
+      },
     };
-    const result = await execute(getExecutableSchema(resolvers), query, root, context, {
-      skipId: false,
-      includeCount: true
+    const result = await execute({
+      schema: getExecutableSchema(resolvers),
+      document: query,
+      rootValue: root,
+      contextValue: context,
+      variableValues: {
+        skipId: false,
+        includeCount: true,
+      },
     });
     expect(result.errors).to.be.undefined;
 
@@ -223,39 +235,45 @@ describe('walk', () => {
     const context = new Context();
     const nodeIdVisitor = sinon.spy();
     const nodeVisitors: FieldVisitors<Context> = {
-      id: nodeIdVisitor
+      id: nodeIdVisitor,
     };
     const friendIdVisitor = sinon.spy();
     const friendVisitors: FieldVisitors<Context> = {
-      id: friendIdVisitor
+      id: friendIdVisitor,
     };
     const personIdVisitor = sinon.spy();
     const personVisitors: FieldVisitors<Context> = {
       id: personIdVisitor,
-      [FieldVisitorDefault]: ctx => ctx
+      [FieldVisitorDefault]: (ctx) => ctx,
     };
     const petIdVisitor = sinon.spy();
     const petVisitors: FieldVisitors<Context> = {
       id: petIdVisitor,
-      [FieldVisitorDefault]: ctx => ctx
+      [FieldVisitorDefault]: (ctx) => ctx,
     };
     const visitors: TypeVisitors<Context> = {
       Node: nodeVisitors,
       Friend: friendVisitors,
       Person: personVisitors,
-      Pet: petVisitors
+      Pet: petVisitors,
     };
     const resolvers = {
       Query: {
-        person(parent: {}, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
+        person(parent: unknown, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
           expect(parent).to.equal(root);
           expect(args.id).to.equal(5);
           walk(context, info, visitors);
-        }
-      }
+        },
+      },
     };
-    const result = await execute(getExecutableSchema(resolvers), query, root, context, {
-      skipId: false
+    const result = await execute({
+      schema: getExecutableSchema(resolvers),
+      document: query,
+      rootValue: root,
+      contextValue: context,
+      variableValues: {
+        skipId: false,
+      },
     });
     expect(result.errors).to.be.undefined;
 
@@ -269,29 +287,29 @@ describe('walk', () => {
     Query: {
       node(_parent: unknown, _args: unknown, context: unknown, info: GraphQLResolveInfo) {
         walk(context, info, {});
-      }
-    }
+      },
+    },
   };
 
   it('throws on invalid field', async () => {
-    const result = await execute(
-      getExecutableSchema(dummyNodeResolvers),
-      gql`
+    const result = await execute({
+      schema: getExecutableSchema(dummyNodeResolvers),
+      document: gql`
         {
           node(id: 1) {
             badField
           }
         }
-      `
-    );
+      `,
+    });
     expect(result.errors).to.have.lengthOf(1);
     expect(result.errors![0].message).to.equal("Field 'badField' is not a member of 'Node'");
   });
 
   it('throws on invalid fragment spread type', async () => {
-    const result = await execute(
-      getExecutableSchema(dummyNodeResolvers),
-      gql`
+    const result = await execute({
+      schema: getExecutableSchema(dummyNodeResolvers),
+      document: gql`
         query {
           node(id: 1) {
             ...stuff
@@ -300,16 +318,16 @@ describe('walk', () => {
         fragment stuff on BadType {
           id
         }
-      `
-    );
+      `,
+    });
     expect(result.errors).to.have.lengthOf(1);
     expect(result.errors![0].message).to.equal("Cannot resolve fragment type 'BadType'");
   });
 
   it('throws on invalid inline fragment type', async () => {
-    const result = await execute(
-      getExecutableSchema(dummyNodeResolvers),
-      gql`
+    const result = await execute({
+      schema: getExecutableSchema(dummyNodeResolvers),
+      document: gql`
         {
           node(id: 1) {
             ... on BadType {
@@ -317,8 +335,8 @@ describe('walk', () => {
             }
           }
         }
-      `
-    );
+      `,
+    });
     expect(result.errors).to.have.lengthOf(1);
     expect(result.errors![0].message).to.equal("Cannot resolve fragment type 'BadType'");
   });
@@ -346,7 +364,7 @@ describe('walkSelections', () => {
       totalCount(ctx, info) {
         expect(ctx).to.equal(context);
         fieldVisitor(info.fieldName);
-      }
+      },
     };
     const personVisitors: FieldVisitors<Context> = {
       firstName(ctx, info) {
@@ -361,23 +379,29 @@ describe('walkSelections', () => {
         expect(ctx).to.equal(context);
         fieldVisitor(info.fieldName);
         walkSelections(ctx, info, visitors, connectionVisitors);
-      }
+      },
     };
     const visitors: TypeVisitors<Context> = {
-      Person: personVisitors
+      Person: personVisitors,
     };
     const resolvers = {
       Query: {
-        person(parent: {}, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
+        person(parent: unknown, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
           expect(parent).to.equal(root);
           expect(args.id).to.equal(5);
           walkSelections(context, info, visitors);
-        }
-      }
+        },
+      },
     };
-    const result = await execute(getExecutableSchema(resolvers), query, root, context, {
-      skipId: true,
-      includeCount: false
+    const result = await execute({
+      schema: getExecutableSchema(resolvers),
+      document: query,
+      rootValue: root,
+      contextValue: context,
+      variableValues: {
+        skipId: true,
+        includeCount: false,
+      },
     });
     expect(result.errors).to.be.undefined;
 
@@ -400,7 +424,7 @@ describe('walkSelections', () => {
         },
         lastName(_, info) {
           fieldVisitor(info.fieldName);
-        }
+        },
       },
       Pet: {
         name(_, info) {
@@ -409,8 +433,8 @@ describe('walkSelections', () => {
         owner(ctx, info) {
           fieldVisitor(info.fieldName);
           return ctx;
-        }
-      }
+        },
+      },
     };
     const resolvers = {
       Query: {
@@ -418,14 +442,14 @@ describe('walkSelections', () => {
           walkSelections(context, info, visitors, undefined, {
             fragmentPredicate(type) {
               return type.name === 'Person';
-            }
+            },
           });
-        }
-      }
+        },
+      },
     };
-    const result = await execute(
-      getExecutableSchema(resolvers),
-      gql`
+    const result = await execute({
+      schema: getExecutableSchema(resolvers),
+      document: gql`
         query {
           node(id: 1) {
             ... on Person {
@@ -447,8 +471,8 @@ describe('walkSelections', () => {
             ...personName
           }
         }
-      `
-    );
+      `,
+    });
     expect(result.errors).to.be.undefined;
 
     expect(fieldVisitor).to.have.been.calledWith('firstName');
@@ -475,23 +499,29 @@ describe('walkSelections', () => {
         expect(ctx).to.equal(context);
         defaultFieldVisitor(info.fieldName);
         walkSelections(context, info, visitors);
-      }
+      },
     };
     const visitors: TypeVisitors<Context> = {
-      Person: personVisitors
+      Person: personVisitors,
     };
     const resolvers = {
       Query: {
-        person(parent: {}, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
+        person(parent: unknown, args: { id: number }, context: Context, info: GraphQLResolveInfo) {
           expect(parent).to.equal(root);
           expect(args.id).to.equal(5);
           walkSelections(context, info, visitors);
-        }
-      }
+        },
+      },
     };
-    const result = await execute(getExecutableSchema(resolvers), query, root, context, {
-      skipId: true,
-      includeCount: false
+    const result = await execute({
+      schema: getExecutableSchema(resolvers),
+      document: query,
+      rootValue: root,
+      contextValue: context,
+      variableValues: {
+        skipId: true,
+        includeCount: false,
+      },
     });
     expect(result.errors).to.be.undefined;
 

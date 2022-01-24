@@ -23,7 +23,7 @@ function getFieldVisitors(type: string): FieldVisitors {
           }
           return context + 1;
         };
-      }
+      },
     }
   );
 }
@@ -37,7 +37,7 @@ function getTypeVisitors(): TypeVisitors {
       },
       get(_, p: string | number | symbol): FieldVisitors {
         return getFieldVisitors(String(p));
-      }
+      },
     }
   );
 }

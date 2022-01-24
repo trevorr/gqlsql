@@ -1,6 +1,6 @@
 import { PropertyDumper } from 'dumpable';
 import { GraphQLResolveInfo } from 'graphql';
-import Knex from 'knex';
+import { Knex } from 'knex';
 import { snakeCase } from 'snake-case';
 import { Memoize } from 'typescript-memoize';
 import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
@@ -14,7 +14,7 @@ import {
   SqlResolverOptions,
   SqlTypeVisitors,
   TypeNameFunction,
-  TypeNameOrFunction
+  TypeNameOrFunction,
 } from './api';
 import { ColumnRestriction } from './ColumnRestriction';
 import { applyCursorFilter, makeCursor } from './cursor';
@@ -26,7 +26,7 @@ import {
   FetchResult,
   InternalSqlResolverFactory,
   SqlChildQueryResolver,
-  SqlConnectionChildResolver
+  SqlConnectionChildResolver,
 } from './internal';
 import { EquiJoinSpec, getJoinTable, isEquiJoin, isSameJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
 import { TableResolver } from './TableResolver';
@@ -65,7 +65,7 @@ const DefaultTypeVisitors: SqlTypeVisitors = {
   object: {},
   connection: {},
   edge: {},
-  pageInfo: {}
+  pageInfo: {},
 };
 
 const DefaultResolverOptions: SqlResolverOptions = {
@@ -73,7 +73,7 @@ const DefaultResolverOptions: SqlResolverOptions = {
   maxLimit: 100,
   sqlExecutor: getDefaultSqlExecutor(),
   visitors: {},
-  userInputError: Error
+  userInputError: Error,
 };
 
 export abstract class KnexSqlQueryResolver extends TableResolver implements BaseSqlQueryResolver {
@@ -168,14 +168,14 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public addCoalesceColumn(column: string, tables: string[]): string {
     return this.addCoalesceExpressionFromAliases(
-      tables.map(table => [this.getTableAlias(table), column]),
+      tables.map((table) => [this.getTableAlias(table), column]),
       column
     );
   }
 
   public addCoalesceColumnFromAliases(column: string, tableAliases: string[]): string {
     return this.addCoalesceExpressionFromAliases(
-      tableAliases.map(tableAlias => [tableAlias, column]),
+      tableAliases.map((tableAlias) => [tableAlias, column]),
       column
     );
   }
@@ -321,12 +321,12 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   public getJoins(): readonly JoinSpec[] {
-    return Array.from(this.joinTables.values(), jt => jt.join);
+    return Array.from(this.joinTables.values(), (jt) => jt.join);
   }
 
   public addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this {
     const alias = this.addSelectColumn(column, table);
-    this.addField(field, func ? row => func(row[alias], row) : row => row[alias]);
+    this.addField(field, func ? (row) => func(row[alias], row) : (row) => row[alias]);
     return this;
   }
 
@@ -337,13 +337,13 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     func?: (value: any, row: Row) => Json
   ): this {
     const alias = this.addCoalesceColumn(column, tables);
-    this.addField(field, func ? row => func(row[alias], row) : row => row[alias]);
+    this.addField(field, func ? (row) => func(row[alias], row) : (row) => row[alias]);
     return this;
   }
 
   public addExpressionField(field: string, expr: string | Knex.Raw, alias?: string): this {
     const actualAlias = this.addSelectExpression(expr, alias);
-    this.addField(field, row => row[actualAlias]);
+    this.addField(field, (row) => row[actualAlias]);
     return this;
   }
 
@@ -378,7 +378,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   ): DelegatingSqlQueryResolver {
     const tables: UnionTableInfo[] = [];
 
-    const typeNameFn: TypeNameFunction = row => {
+    const typeNameFn: TypeNameFunction = (row) => {
       let result = null;
       for (const table of tables) {
         if (row[table.testColumn] != null) {
@@ -440,7 +440,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     const resolver = this.createChildResolver(this, this.resolvePrimaryJoin(join));
     const alias = resolver.addSelectColumn(column);
     this.addField(field, (parentRow, _, fetchMap) =>
-      resolver.buildJsonList(fetchMap, parentRow, func ? row => func(row[alias], row) : row => row[alias])
+      resolver.buildJsonList(fetchMap, parentRow, func ? (row) => func(row[alias], row) : (row) => row[alias])
     );
     return resolver;
   }
@@ -454,7 +454,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     const resolver = this.createChildResolver(this, this.resolvePrimaryJoin(join));
     const actualAlias = resolver.addSelectExpression(expr, alias);
     this.addField(field, (parentRow, _, fetchMap) =>
-      resolver.buildJsonList(fetchMap, parentRow, row => row[actualAlias])
+      resolver.buildJsonList(fetchMap, parentRow, (row) => row[actualAlias])
     );
     return resolver;
   }
@@ -560,7 +560,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   protected async fetchChildren(parentRows: Row[], map: FetchMap): Promise<void> {
-    await Promise.all(this.childResolvers.map(resolver => resolver.fetch(parentRows, map)));
+    await Promise.all(this.childResolvers.map((resolver) => resolver.fetch(parentRows, map)));
   }
 
   public getDataQuery(): RowsQueryBuilder {
@@ -606,9 +606,9 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       fromTable = this.defaultTable,
       fromAlias = fromTable,
       toRestrictions = [],
-      fromRestrictions = []
+      fromRestrictions = [],
     } = join;
-    query.leftJoin(getKnexJoinTable(join), clause => {
+    query.leftJoin(getKnexJoinTable(join), (clause) => {
       for (let i = 0; i < join.toColumns.length; ++i) {
         clause.on(`${toAlias}.${join.toColumns[i]}`, `${fromAlias}.${join.fromColumns[i]}`);
       }
@@ -629,7 +629,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   protected applySelect(query: RowsQueryBuilder): RowsQueryBuilder {
-    const columns = Array.from(this.selects.values(), select =>
+    const columns = Array.from(this.selects.values(), (select) =>
       isSelectColumn(select) ? getKnexSelectColumn(select) : getKnexSelectExpression(this.knex, select)
     );
     return this.distinct ? query.distinct(columns) : query.select(columns);
@@ -642,7 +642,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   protected applyPageRange(query: RowsQueryBuilder): RowsQueryBuilder {
     const { args } = this;
     if (args.after || args.before) {
-      const cursorFields = this.cursorColumns.map(name => {
+      const cursorFields = this.cursorColumns.map((name) => {
         const select = this.selects.get(name);
         const qualifiedName = select && 'table' in select ? `${select.table}.${select.column}` : name;
         const orderBy = this.orderByColumns.get(name);
@@ -723,7 +723,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       hasPreviousPage,
       hasNextPage,
       afterCursor: args.after || undefined,
-      beforeCursor: args.before || undefined
+      beforeCursor: args.before || undefined,
     };
   }
 

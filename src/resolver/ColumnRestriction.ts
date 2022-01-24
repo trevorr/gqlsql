@@ -34,7 +34,7 @@ export function formatColumnCompare(c: ColumnCompare): string {
 }
 
 export function formatColumnIn(c: ColumnIn): string {
-  return `${c.column} in (${c.values.map(v => JSON.stringify(v)).join(', ')})`;
+  return `${c.column} in (${c.values.map((v) => JSON.stringify(v)).join(', ')})`;
 }
 
 export function formatColumnRestriction(c: ColumnRestriction): string {

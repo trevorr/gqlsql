@@ -60,7 +60,7 @@ export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T>
 function isOrContainsOnlyEmptyConnections(value: Json): boolean {
   return (
     isJsonObject(value) &&
-    (isEmptyConnection(value) || Object.values(value).every(v => isOrContainsOnlyEmptyConnections(v)))
+    (isEmptyConnection(value) || Object.values(value).every((v) => isOrContainsOnlyEmptyConnections(v)))
   );
 }
 

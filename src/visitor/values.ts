@@ -14,7 +14,7 @@ export function getValue(n: ValueNode, variableValues: VariableValues): any {
     case 'StringValue':
       return n.value;
     case 'ListValue':
-      return n.values.map(v => getValue(v, variableValues));
+      return n.values.map((v) => getValue(v, variableValues));
     case 'ObjectValue':
       return n.fields.reduce((obj: any, f) => {
         obj[f.name.value] = getValue(f.value, variableValues);

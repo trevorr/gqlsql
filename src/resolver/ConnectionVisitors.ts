@@ -18,5 +18,5 @@ export const ConnectionVisitors: ShallowFieldVisitors<SqlConnectionResolver, Sql
   },
   totalCount(context, info): void {
     context.addTotalCount(info.fieldName);
-  }
+  },
 };

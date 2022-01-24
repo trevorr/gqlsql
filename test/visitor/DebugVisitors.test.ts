@@ -10,10 +10,10 @@ describe('DebugVisitors', () => {
       Query: {
         person(_parent: unknown, _args: unknown, context: unknown, info: GraphQLResolveInfo) {
           walk(context, info, DebugVisitors);
-        }
-      }
+        },
+      },
     };
-    await execute(getExecutableSchema(resolvers), query, null, 0);
+    await execute({ schema: getExecutableSchema(resolvers), document: query });
   });
 
   it('has infinite methods', () => {

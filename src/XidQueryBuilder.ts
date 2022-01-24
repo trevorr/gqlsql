@@ -1,4 +1,4 @@
-import Knex from 'knex';
+import { Knex } from 'knex';
 import { TableMetadata, TypeMetadata } from './meta';
 import { resolveQid } from './qid';
 import { Row, SqlExecutor } from './resolver';

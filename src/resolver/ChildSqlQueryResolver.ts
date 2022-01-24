@@ -1,5 +1,5 @@
 import { PropertyDumper } from 'dumpable';
-import { QueryBuilder } from 'knex';
+import { Knex } from 'knex';
 import { Json, JsonObject, ResolverArgs, SqlQueryResolver, SqlResolverOptions, TypeNameOrFunction } from './api';
 import { ContainingSqlQueryResolver } from './ContainingSqlQueryResolver';
 import { FetchMap, FetchResult, InternalSqlResolverFactory, ParentRowMap, SqlChildQueryResolver } from './internal';
@@ -81,7 +81,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
 
         // search parent for transitive joins
         const parentJoins = this.parentResolver.getJoins();
-        const nextKey = findMap(parentJoins, pj => isEquiJoin(pj) && getConnectingKey(pj, fromKey));
+        const nextKey = findMap(parentJoins, (pj) => isEquiJoin(pj) && getConnectingKey(pj, fromKey));
         if (!nextKey) {
           break;
         }
@@ -126,10 +126,10 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
       sql += ') as ??';
       bindings.push(PartitionRowColumn);
 
-      query = (this.knex
+      query = this.knex
         .select()
         .from(query.select(this.knex.raw(sql, bindings)).as(WindowSubqueryAlias))
-        .where(PartitionRowColumn, '<=', limit + 1) as QueryBuilder) as RowsQueryBuilder;
+        .where(PartitionRowColumn, '<=', limit + 1) as Knex.QueryBuilder as RowsQueryBuilder;
     }
     return query;
   }
@@ -173,7 +173,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
         }
       }
     }
-    fetchMap.set(this, parentRow => {
+    fetchMap.set(this, (parentRow) => {
       if (parentRow) {
         const keys = getRowKeys(parentRow, this.fromSelects);
         const keyString = makeKeyString(keys);
@@ -194,7 +194,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     const baseQuery = this.getBaseQuery().clone();
     const { toTable, toColumns, toRestrictions = [] } = this.primaryJoin;
     const toTableName = getTableName(toTable);
-    const qualifiedColumns = toColumns.map(toColumn => getKnexSelectColumn({ table: toTableName, column: toColumn }));
+    const qualifiedColumns = toColumns.map((toColumn) => getKnexSelectColumn({ table: toTableName, column: toColumn }));
     baseQuery.whereIn(qualifiedColumns, parentKeys);
     for (const r of toRestrictions) {
       if ('value' in r) {
@@ -211,12 +211,9 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     const baseQuery = this.getBaseQuery().clone();
     const { toTable, toColumns } = this.primaryJoin;
     const toTableName = getTableName(toTable);
-    const qualifiedColumns = toColumns.map(toColumn => getKnexSelectColumn({ table: toTableName, column: toColumn }));
+    const qualifiedColumns = toColumns.map((toColumn) => getKnexSelectColumn({ table: toTableName, column: toColumn }));
     const countQuery = this.buildTotalCountQuery(
-      baseQuery
-        .select(qualifiedColumns)
-        .whereIn(qualifiedColumns, parentKeys)
-        .groupBy(qualifiedColumns)
+      baseQuery.select(qualifiedColumns).whereIn(qualifiedColumns, parentKeys).groupBy(qualifiedColumns)
     );
     return this.options.sqlExecutor.execute(countQuery);
   }
@@ -224,13 +221,13 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
   public buildObjectList(fetchMap: FetchMap, parentRow: Row, parentRowMap: ParentRowMap): JsonObject[] {
     const fetchLookup = fetchMap.get(this);
     const data = fetchLookup!(parentRow);
-    return data.rows.map(row => this.buildObject(row, parentRowMap, fetchMap));
+    return data.rows.map((row) => this.buildObject(row, parentRowMap, fetchMap));
   }
 
   public buildJsonList(fetchMap: FetchMap, parentRow: Row, func: (row: Row) => Json): Json[] {
     const fetchLookup = fetchMap.get(this);
     const data = fetchLookup!(parentRow);
-    return data.rows.map(func).filter(v => v !== undefined);
+    return data.rows.map(func).filter((v) => v !== undefined);
   }
 
   public dumpProperties(d: PropertyDumper): void {
@@ -241,7 +238,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
 }
 
 function getAllRowKeys(rows: Row[], columns: string[]): KeyValue[][] {
-  return rows.filter(row => columns.every(column => row[column] != null)).map(row => getRowKeys(row, columns));
+  return rows.filter((row) => columns.every((column) => row[column] != null)).map((row) => getRowKeys(row, columns));
 }
 
 function getRowKeys(row: Row, columns: string[]): KeyValue[] {

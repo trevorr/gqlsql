@@ -1,5 +1,5 @@
 import { GraphQLResolveInfo } from 'graphql';
-import Knex, { QueryBuilder } from 'knex';
+import { Knex } from 'knex';
 import { ShallowTypeVisitors, TypeVisitors, WalkOptions } from '../visitor';
 import { GraphQLVisitorInfo } from '../visitor/GraphQLVisitorInfo';
 import { EquiJoinSpec, JoinSpec, UnionJoinSpec } from './JoinSpec';
@@ -187,7 +187,7 @@ export interface SqlPageInfoResolver {
 }
 
 export interface SqlExecutor {
-  execute<T>(query: QueryBuilder<any, T>): Promise<T>;
+  execute<T>(query: Knex.QueryBuilder<any, T>): Promise<T>;
 }
 
 export interface UserInputErrorConstructor {

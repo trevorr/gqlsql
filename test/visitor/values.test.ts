@@ -1,26 +1,26 @@
 import { expect } from 'chai';
-import { FieldNode, NameNode, ObjectFieldNode, ValueNode, VariableNode } from 'graphql';
+import { FieldNode, Kind, NameNode, ObjectFieldNode, ValueNode, VariableNode } from 'graphql';
 import { getValue, GraphQLVisitorInfo, isTrueValue, resolveArguments } from '../../src/visitor';
 
 function makeName(name: string): NameNode {
   return {
-    kind: 'Name',
-    value: name
+    kind: Kind.NAME,
+    value: name,
   };
 }
 
 function makeVar(name: string): VariableNode {
   return {
-    kind: 'Variable',
-    name: makeName(name)
+    kind: Kind.VARIABLE,
+    name: makeName(name),
   };
 }
 
 function makeField(name: string, value: ValueNode): ObjectFieldNode {
   return {
-    kind: 'ObjectField',
+    kind: Kind.OBJECT_FIELD,
     name: makeName(name),
-    value
+    value,
   };
 }
 
@@ -29,32 +29,32 @@ describe('getValue', () => {
     expect(getValue(makeVar('f'), { f: 42 })).to.equal(42);
   });
   it('handles IntValue', () => {
-    expect(getValue({ kind: 'IntValue', value: '42' }, {})).to.equal('42');
+    expect(getValue({ kind: Kind.INT, value: '42' }, {})).to.equal('42');
   });
   it('handles FloatValue', () => {
-    expect(getValue({ kind: 'FloatValue', value: '3.14' }, {})).to.equal('3.14');
+    expect(getValue({ kind: Kind.FLOAT, value: '3.14' }, {})).to.equal('3.14');
   });
   it('handles StringValue', () => {
-    expect(getValue({ kind: 'StringValue', value: 'hello' }, {})).to.equal('hello');
+    expect(getValue({ kind: Kind.STRING, value: 'hello' }, {})).to.equal('hello');
   });
   it('handles BooleanValue', () => {
-    expect(getValue({ kind: 'BooleanValue', value: true }, {})).to.equal(true);
+    expect(getValue({ kind: Kind.BOOLEAN, value: true }, {})).to.equal(true);
   });
   it('handles NullValue', () => {
-    expect(getValue({ kind: 'NullValue' }, {})).to.be.null;
+    expect(getValue({ kind: Kind.NULL }, {})).to.be.null;
   });
   it('handles EnumValue', () => {
-    expect(getValue({ kind: 'EnumValue', value: 'SOME_VALUE' }, {})).to.equal('SOME_VALUE');
+    expect(getValue({ kind: Kind.ENUM, value: 'SOME_VALUE' }, {})).to.equal('SOME_VALUE');
   });
   it('handles ListValue', () => {
-    expect(getValue({ kind: 'ListValue', values: [{ kind: 'IntValue', value: '42' }] }, {})).to.eql(['42']);
+    expect(getValue({ kind: Kind.LIST, values: [{ kind: Kind.INT, value: '42' }] }, {})).to.eql(['42']);
   });
   it('handles ObjectValue', () => {
     expect(
       getValue(
         {
-          kind: 'ObjectValue',
-          fields: [makeField('f', { kind: 'IntValue', value: '42' })]
+          kind: Kind.OBJECT,
+          fields: [makeField('f', { kind: Kind.INT, value: '42' })],
         },
         {}
       )
@@ -64,8 +64,8 @@ describe('getValue', () => {
 
 describe('isTrueValue', () => {
   it('handles BooleanValue', () => {
-    expect(isTrueValue({ kind: 'BooleanValue', value: false }, {})).to.be.false;
-    expect(isTrueValue({ kind: 'BooleanValue', value: true }, {})).to.be.true;
+    expect(isTrueValue({ kind: Kind.BOOLEAN, value: false }, {})).to.be.false;
+    expect(isTrueValue({ kind: Kind.BOOLEAN, value: true }, {})).to.be.true;
   });
   it('handles Variable', () => {
     expect(isTrueValue(makeVar('f'), { f: false })).to.be.false;
@@ -73,8 +73,8 @@ describe('isTrueValue', () => {
     expect(isTrueValue(makeVar('f'), { f: 42 })).to.be.false;
   });
   it('handles other values', () => {
-    expect(isTrueValue({ kind: 'NullValue' }, {})).to.be.false;
-    expect(isTrueValue({ kind: 'IntValue', value: '42' }, {})).to.be.false;
+    expect(isTrueValue({ kind: Kind.NULL }, {})).to.be.false;
+    expect(isTrueValue({ kind: Kind.INT, value: '42' }, {})).to.be.false;
   });
 });
 
@@ -85,25 +85,25 @@ describe('resolveArguments', () => {
   });
   it('handles empty arguments', () => {
     const info = {
-      fieldNode: { kind: 'Field', name: makeName('f'), arguments: [] } as FieldNode
+      fieldNode: { kind: 'Field', name: makeName('f'), arguments: [] } as FieldNode,
     } as GraphQLVisitorInfo;
     expect(resolveArguments(info)).to.eql({});
   });
   it('handles actual arguments', () => {
-    const info = ({
+    const info = {
       fieldNode: {
         kind: 'Field',
         name: makeName('f'),
         arguments: [
           { kind: 'Argument', name: makeName('x'), value: { kind: 'IntValue', value: '42' } },
           { kind: 'Argument', name: makeName('y'), value: { kind: 'StringValue', value: 'hi' } },
-          { kind: 'Argument', name: makeName('z'), value: { kind: 'Variable', name: makeName('foo') } }
-        ]
+          { kind: 'Argument', name: makeName('z'), value: { kind: 'Variable', name: makeName('foo') } },
+        ],
       } as FieldNode,
       variableValues: {
-        foo: 'bar'
-      }
-    } as any) as GraphQLVisitorInfo;
+        foo: 'bar',
+      },
+    } as any as GraphQLVisitorInfo;
     expect(resolveArguments(info)).to.eql({ x: '42', y: 'hi', z: 'bar' });
   });
 });

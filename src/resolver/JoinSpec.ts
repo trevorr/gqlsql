@@ -73,10 +73,10 @@ export function formatEquiJoinSpec(j: EquiJoinSpec): string {
   const toQualifier = j.toAlias ? j.toAlias + '.' : j.toTable ? j.toTable + '.' : '';
   const criteria = j.fromColumns.map((fc, i) => `${fromQualifier}${fc} = ${toQualifier}${j.toColumns[i]}`);
   if (j.fromRestrictions) {
-    criteria.push(...j.fromRestrictions.map(r => fromQualifier + formatColumnRestriction(r)));
+    criteria.push(...j.fromRestrictions.map((r) => fromQualifier + formatColumnRestriction(r)));
   }
   if (j.toRestrictions) {
-    criteria.push(...j.toRestrictions.map(r => toQualifier + formatColumnRestriction(r)));
+    criteria.push(...j.toRestrictions.map((r) => toQualifier + formatColumnRestriction(r)));
   }
   return `${formatTableAlias(j.fromTable, j.fromAlias)} join ${formatTableAlias(
     j.toTable,
@@ -103,7 +103,7 @@ export function getFromKey(join: EquiJoinSpec): JoinKey {
   return {
     table: join.fromTable,
     columns: join.fromColumns,
-    restrictions: join.fromRestrictions
+    restrictions: join.fromRestrictions,
   };
 }
 
@@ -111,7 +111,7 @@ export function getToKey(join: EquiJoinSpec): JoinKey {
   return {
     table: getTableName(join.toTable),
     columns: join.toColumns,
-    restrictions: join.toRestrictions
+    restrictions: join.toRestrictions,
   };
 }
 

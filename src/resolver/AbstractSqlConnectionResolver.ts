@@ -9,8 +9,10 @@ import { KnexSqlQueryResolver } from './KnexSqlQueryResolver';
 import { SqlEdgeResolverImpl } from './SqlEdgeResolverImpl';
 import { SqlPageInfoResolverImpl } from './SqlPageInfoResolverImpl';
 
-export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver> extends FieldResolver<FetchResult>
-  implements SqlConnectionResolver {
+export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver>
+  extends FieldResolver<FetchResult>
+  implements SqlConnectionResolver
+{
   protected readonly nodeResolver: TNR;
   protected readonly edgeResolver: SqlEdgeResolverImpl;
 
@@ -43,7 +45,7 @@ export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver> ext
 
   public addEdges(field: string): SqlEdgeResolver {
     this.addField(field, (data, parentRowMap, fetchMap) =>
-      data.rows.map(row => {
+      data.rows.map((row) => {
         parentRowMap.set(this.nodeResolver, row);
         return this.edgeResolver.buildResult(row, parentRowMap, fetchMap);
       })
@@ -53,7 +55,7 @@ export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver> ext
 
   public addNodes(field: string): SqlQueryResolver {
     this.addField(field, (data, parentRowMap, fetchMap) =>
-      data.rows.map(row => {
+      data.rows.map((row) => {
         parentRowMap.set(this.nodeResolver, row);
         return this.nodeResolver.buildResult(row, parentRowMap, fetchMap);
       })
@@ -69,7 +71,7 @@ export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver> ext
 
   public addTotalCount(field: string): void {
     this.nodeResolver.addTotalCount();
-    this.addField(field, data => data.totalCount || 0);
+    this.addField(field, (data) => data.totalCount || 0);
   }
 
   public walk(

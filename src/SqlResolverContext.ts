@@ -1,4 +1,4 @@
-import Knex from 'knex';
+import { Knex } from 'knex';
 import { TypeMetadata } from './meta';
 import { SqlExecutor, SqlResolverFactory, UserInputErrorConstructor } from './resolver';
 import { XidQueryBuilder } from './XidQueryBuilder';
@@ -29,5 +29,5 @@ export interface SqlResolverContext {
   ): Promise<Record<string, any>>;
   queryOptionalRow(query: Knex.QueryBuilder): Promise<Record<string, any>>;
   throwNotFound(description: string | TypeMetadata, id?: string | number): never;
-  extend<Props extends {}>(props: Props): this & Props;
+  extend<Props extends Record<string, unknown>>(props: Props): this & Props;
 }

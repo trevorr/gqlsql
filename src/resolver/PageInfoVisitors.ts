@@ -13,5 +13,5 @@ export const PageInfoVisitors: ShallowFieldVisitors<SqlPageInfoResolver, void> =
   },
   endCursor(context, info): void {
     context.addEndCursor(info.fieldName);
-  }
+  },
 };

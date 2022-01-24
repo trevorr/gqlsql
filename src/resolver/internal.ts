@@ -8,7 +8,7 @@ import {
   SqlQueryResolver,
   SqlResolverFactory,
   SqlResolverOptions,
-  TypeNameOrFunction
+  TypeNameOrFunction,
 } from './api';
 import { EquiJoinSpec, JoinSpec, UnionJoinSpec } from './JoinSpec';
 import { TableResolver } from './TableResolver';

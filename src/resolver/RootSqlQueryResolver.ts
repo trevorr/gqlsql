@@ -1,4 +1,4 @@
-import Knex from 'knex';
+import { Knex } from 'knex';
 import {
   JsonObject,
   ResolverArgs,
@@ -7,7 +7,7 @@ import {
   SqlQueryResolver,
   SqlQueryRootResolver,
   SqlResolverOptions,
-  TypeNameOrFunction
+  TypeNameOrFunction,
 } from './api';
 import { FetchLookup, FetchMap, InternalSqlResolverFactory } from './internal';
 import { KnexSqlQueryResolver } from './KnexSqlQueryResolver';
@@ -81,9 +81,9 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
       map.set(String(row[idAlias]), row);
       return map;
     }, new Map<string, Row>());
-    let rows = idValues.map(id => rowsById.get(String(id))).filter(notNull);
+    let rows = idValues.map((id) => rowsById.get(String(id))).filter(notNull);
     if (rowTransform) {
-      rows = rows.map(row => rowTransform(row, row[idAlias]));
+      rows = rows.map((row) => rowTransform(row, row[idAlias]));
     }
     rows = this.filterFetch(rows);
     const result = this.buildFetchResult(rows);
@@ -103,7 +103,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
     const fetchLookup = fetchMap.get(this);
     const result = fetchLookup!();
     const parentRowMap = new Map();
-    return result.rows.map(row => {
+    return result.rows.map((row) => {
       parentRowMap.set(this, row);
       return this.buildObject(row, parentRowMap, fetchMap);
     });

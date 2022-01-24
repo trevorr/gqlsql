@@ -3,8 +3,10 @@ import { Connection, JsonObject, SearchId, SearchRowTransform, SqlConnectionRoot
 import { FetchMap } from './internal';
 import { RootSqlQueryResolver } from './RootSqlQueryResolver';
 
-export class RootSqlConnectionResolver extends AbstractSqlConnectionResolver<RootSqlQueryResolver>
-  implements SqlConnectionRootResolver {
+export class RootSqlConnectionResolver
+  extends AbstractSqlConnectionResolver<RootSqlQueryResolver>
+  implements SqlConnectionRootResolver
+{
   public async execute(): Promise<Partial<Connection<JsonObject>>> {
     return this.fetchMapToObject(await this.nodeResolver.fetch());
   }

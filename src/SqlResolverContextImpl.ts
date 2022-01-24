@@ -1,4 +1,4 @@
-import Knex from 'knex';
+import { Knex } from 'knex';
 import { TypeMetadata } from './meta';
 import {
   createFactory,
@@ -6,7 +6,7 @@ import {
   SqlExecutor,
   SqlResolverFactory,
   SqlResolverOptions,
-  UserInputErrorConstructor
+  UserInputErrorConstructor,
 } from './resolver';
 import { SqlResolverContext } from './SqlResolverContext';
 import { XidQueryBuilder } from './XidQueryBuilder';
@@ -58,7 +58,7 @@ class SqlResolverContextImpl implements SqlResolverContext {
     description: string | TypeMetadata = 'Row',
     id?: string | number
   ): Promise<Record<string, any>> {
-    const rows = await this.sqlExecutor.execute(query);
+    const rows = await this.sqlExecutor.execute<any[]>(query);
     if (!rows.length) {
       this.throwNotFound(description, id);
     }
@@ -66,7 +66,7 @@ class SqlResolverContextImpl implements SqlResolverContext {
   }
 
   public async queryOptionalRow(query: Knex.QueryBuilder): Promise<Record<string, any>> {
-    const rows = await this.sqlExecutor.execute(query);
+    const rows = await this.sqlExecutor.execute<any[]>(query);
     return rows.length ? rows[0] : {};
   }
 
@@ -80,7 +80,7 @@ class SqlResolverContextImpl implements SqlResolverContext {
     throw new this.userInputError(`${description} not found`, { code: 'NOT_FOUND', id });
   }
 
-  public extend<Props extends {}>(props: Props): this & Props {
+  public extend<Props extends Record<string, unknown>>(props: Props): this & Props {
     return Object.assign(this, props);
   }
 }
