@@ -86,6 +86,10 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this;
   }
 
+  public addSelectAlias(columnAlias: string): string {
+    return this.baseResolver.addSelectAlias(columnAlias);
+  }
+
   public addSelectColumn(column: string, table = this.defaultTable, columnAlias?: string): string {
     return this.baseResolver.addSelectColumnFromAlias(column, this.getTableAlias(table), columnAlias);
   }
@@ -98,15 +102,15 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this.baseResolver.addSelectExpression(expr, alias);
   }
 
-  public addCoalesceColumn(column: string, tables: string[]): string {
+  public addCoalesceColumn(column: string, tables: string[], columnAlias = column): string {
     return this.baseResolver.addCoalesceExpressionFromAliases(
       tables.map((table) => [this.getTableAlias(table), column]),
-      column
+      columnAlias
     );
   }
 
-  public addCoalesceColumnFromAliases(column: string, tableAliases: string[]): string {
-    return this.baseResolver.addCoalesceColumnFromAliases(column, tableAliases);
+  public addCoalesceColumnFromAliases(column: string, tableAliases: string[], columnAlias = column): string {
+    return this.baseResolver.addCoalesceColumnFromAliases(column, tableAliases, columnAlias);
   }
 
   public addCoalesceExpression(tableQualifiedColumns: [string, string][], columnAlias?: string): string {
@@ -118,6 +122,12 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public addCoalesceExpressionFromAliases(aliasQualifiedColumns: [string, string][], columnAlias?: string): string {
     return this.baseResolver.addCoalesceExpressionFromAliases(aliasQualifiedColumns, columnAlias);
+  }
+
+  public addAliasField(field: string, columnAlias: string): this {
+    this.addSelectAlias(columnAlias);
+    this.addField(field, (row) => row[columnAlias]);
+    return this;
   }
 
   public addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this {

@@ -1,17 +1,16 @@
+import { ColumnOrAliasRef, getColumnOrAlias, isSameColumnOrAliasRef } from './ColumnRef';
 import { arrayEqual } from './util';
 
 export type ColumnValue = string | number | boolean | Buffer | Date;
 
-export interface ColumnCompare {
-  column: string;
+export type ColumnCompare = ColumnOrAliasRef & {
   operator?: string; // default '='
   value: ColumnValue;
-}
+};
 
-export interface ColumnIn {
-  column: string;
+export type ColumnIn = ColumnOrAliasRef & {
   values: ColumnValue[];
-}
+};
 
 export type ColumnRestriction = ColumnCompare | ColumnIn;
 
@@ -19,22 +18,24 @@ export function isColumnCompare(r: ColumnRestriction): r is ColumnCompare {
   return 'value' in r;
 }
 
+export function isColumnIn(r: ColumnRestriction): r is ColumnIn {
+  return 'values' in r;
+}
+
 export function isSameColumnRestriction(a: ColumnRestriction, b: ColumnRestriction): boolean {
-  if (isColumnCompare(a)) {
-    if (isColumnCompare(b)) {
-      return a.column === b.column && a.value === b.value && (a.operator || '=') === (b.operator || '=');
-    }
-    return false;
-  }
-  return !isColumnCompare(b) && a.column === b.column && arrayEqual(a.values, b.values);
+  return (
+    isSameColumnOrAliasRef(a, b) &&
+    ((isColumnCompare(a) && isColumnCompare(b) && a.value === b.value && (a.operator || '=') === (b.operator || '=')) ||
+      (isColumnIn(a) && isColumnIn(b) && arrayEqual(a.values, b.values)))
+  );
 }
 
 export function formatColumnCompare(c: ColumnCompare): string {
-  return `${c.column} ${c.operator || '='} ${JSON.stringify(c.value)}`;
+  return `${getColumnOrAlias(c)} ${c.operator || '='} ${JSON.stringify(c.value)}`;
 }
 
 export function formatColumnIn(c: ColumnIn): string {
-  return `${c.column} in (${c.values.map((v) => JSON.stringify(v)).join(', ')})`;
+  return `${getColumnOrAlias(c)} in (${c.values.map((v) => JSON.stringify(v)).join(', ')})`;
 }
 
 export function formatColumnRestriction(c: ColumnRestriction): string {

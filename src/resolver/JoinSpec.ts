@@ -1,22 +1,51 @@
+import { qualifyColumn } from './ColumnRef';
+import { ColumnOrAliasRefs, isColumnAliasRefs, isColumnRefs, isSameColumnOrAliasRefs } from './ColumnRefs';
 import { ColumnRestriction, formatColumnRestriction, isSameColumnRestriction } from './ColumnRestriction';
 import { getTableName, TableLike } from './TableSpec';
 import { arrayEqual, optionalArrayEqual } from './util';
 
-export interface EquiJoinSpec {
+export type FromColumns = { fromColumns: string[] };
+export type FromColumnAliases = { fromColumnAliases: string[] };
+
+export type FromColumnsOrAliases = FromColumns | FromColumnAliases;
+
+export function isFromColumns(coa: FromColumnsOrAliases): coa is FromColumns {
+  return 'fromColumns' in coa;
+}
+
+export function isFromColumnAliases(coa: FromColumnsOrAliases): coa is FromColumnAliases {
+  return 'fromColumnAliases' in coa;
+}
+
+export function qualifyFromColumnsOrAliases(coa: FromColumnsOrAliases, table: string | undefined): string[] {
+  return isFromColumns(coa)
+    ? table
+      ? coa.fromColumns.map((c) => `${table}.${c}`)
+      : coa.fromColumns
+    : coa.fromColumnAliases;
+}
+
+export function isSameFromColumnsOrAliases(a: FromColumnsOrAliases, b: FromColumnsOrAliases): boolean {
+  return (
+    (isFromColumns(a) && isFromColumns(b) && arrayEqual(a.fromColumns, b.fromColumns)) ||
+    (isFromColumnAliases(a) && isFromColumnAliases(b) && arrayEqual(a.fromColumnAliases, b.fromColumnAliases))
+  );
+}
+
+export type EquiJoinSpec = FromColumnsOrAliases & {
   toTable: TableLike;
   toAlias?: string;
   toColumns: string[];
   toRestrictions?: ColumnRestriction[];
   fromTable?: string;
   fromAlias?: string;
-  fromColumns: string[];
   fromRestrictions?: ColumnRestriction[];
   forced?: boolean;
-}
+};
 
-export interface UnionJoinSpec extends EquiJoinSpec {
+export type UnionJoinSpec = EquiJoinSpec & {
   typeName: string;
-}
+};
 
 export interface ProvidedJoinSpec {
   toAlias: string;
@@ -25,11 +54,10 @@ export interface ProvidedJoinSpec {
 
 export type JoinSpec = EquiJoinSpec | ProvidedJoinSpec;
 
-export interface JoinKey {
+export type JoinKey = ColumnOrAliasRefs & {
   table?: string;
-  columns: string[];
   restrictions?: ColumnRestriction[];
-}
+};
 
 export function getJoinAlias(join: JoinSpec): string {
   if (isEquiJoin(join)) {
@@ -43,11 +71,11 @@ export function getJoinTable(join: JoinSpec): TableLike {
 }
 
 export function isEquiJoin(join: JoinSpec): join is EquiJoinSpec {
-  return 'fromColumns' in join;
+  return 'fromColumns' in join || 'fromColumnAliases' in join;
 }
 
 export function isProvidedJoin(join: JoinSpec): join is ProvidedJoinSpec {
-  return !('fromColumns' in join);
+  return !isEquiJoin(join);
 }
 
 export function isSameJoin(a: JoinSpec, b: JoinSpec): boolean {
@@ -59,7 +87,7 @@ export function isSameJoin(a: JoinSpec, b: JoinSpec): boolean {
         arrayEqual(a.toColumns, b.toColumns) &&
         optionalArrayEqual(a.toRestrictions, b.toRestrictions, isSameColumnRestriction) &&
         a.fromTable === b.fromTable &&
-        arrayEqual(a.fromColumns, b.fromColumns) &&
+        isSameFromColumnsOrAliases(a, b) &&
         optionalArrayEqual(a.fromRestrictions, b.fromRestrictions, isSameColumnRestriction)
       );
     }
@@ -69,14 +97,16 @@ export function isSameJoin(a: JoinSpec, b: JoinSpec): boolean {
 }
 
 export function formatEquiJoinSpec(j: EquiJoinSpec): string {
-  const fromQualifier = j.fromAlias ? j.fromAlias + '.' : j.fromTable ? j.fromTable + '.' : '';
-  const toQualifier = j.toAlias ? j.toAlias + '.' : j.toTable ? j.toTable + '.' : '';
-  const criteria = j.fromColumns.map((fc, i) => `${fromQualifier}${fc} = ${toQualifier}${j.toColumns[i]}`);
+  const fromQualifier = j.fromAlias || j.fromTable;
+  const toQualifier = j.toAlias || getTableName(j.toTable);
+  const criteria = qualifyFromColumnsOrAliases(j, fromQualifier).map(
+    (fc, i) => `${fc} = ${qualifyColumn(j.toColumns[i], toQualifier)}`
+  );
   if (j.fromRestrictions) {
-    criteria.push(...j.fromRestrictions.map((r) => fromQualifier + formatColumnRestriction(r)));
+    criteria.push(...j.fromRestrictions.map((r) => qualifyColumn(formatColumnRestriction(r), fromQualifier)));
   }
   if (j.toRestrictions) {
-    criteria.push(...j.toRestrictions.map((r) => toQualifier + formatColumnRestriction(r)));
+    criteria.push(...j.toRestrictions.map((r) => qualifyColumn(formatColumnRestriction(r), toQualifier)));
   }
   return `${formatTableAlias(j.fromTable, j.fromAlias)} join ${formatTableAlias(
     j.toTable,
@@ -100,9 +130,16 @@ export function formatJoinSpec(j: JoinSpec): string {
 }
 
 export function getFromKey(join: EquiJoinSpec): JoinKey {
+  if (isFromColumns(join)) {
+    return {
+      table: join.fromTable,
+      columns: join.fromColumns,
+      restrictions: join.fromRestrictions,
+    };
+  }
   return {
     table: join.fromTable,
-    columns: join.fromColumns,
+    columnAliases: join.fromColumnAliases,
     restrictions: join.fromRestrictions,
   };
 }
@@ -116,13 +153,14 @@ export function getToKey(join: EquiJoinSpec): JoinKey {
 }
 
 export function isSameKey(a: JoinKey, b: JoinKey): boolean {
-  return a.table === b.table && arrayEqual(a.columns, b.columns) && optionalArrayEqual(a.restrictions, b.restrictions);
+  return a.table === b.table && isSameColumnOrAliasRefs(a, b) && optionalArrayEqual(a.restrictions, b.restrictions);
 }
 
 export function isFromKey(join: EquiJoinSpec, key: JoinKey): boolean {
   return (
     join.fromTable === key.table &&
-    arrayEqual(join.fromColumns, key.columns) &&
+    ((isFromColumns(join) && isColumnRefs(key) && arrayEqual(join.fromColumns, key.columns)) ||
+      (isFromColumnAliases(join) && isColumnAliasRefs(key) && arrayEqual(join.fromColumnAliases, key.columnAliases))) &&
     optionalArrayEqual(join.fromRestrictions, key.restrictions)
   );
 }
@@ -130,6 +168,7 @@ export function isFromKey(join: EquiJoinSpec, key: JoinKey): boolean {
 export function isToKey(join: EquiJoinSpec, key: JoinKey): boolean {
   return (
     join.toTable === key.table &&
+    isColumnRefs(key) &&
     arrayEqual(join.toColumns, key.columns) &&
     optionalArrayEqual(join.toRestrictions, key.restrictions)
   );

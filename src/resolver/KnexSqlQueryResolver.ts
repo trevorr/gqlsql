@@ -16,6 +16,7 @@ import {
   TypeNameFunction,
   TypeNameOrFunction,
 } from './api';
+import { qualifyColumnOrAliasRef } from './ColumnRef';
 import { ColumnRestriction } from './ColumnRestriction';
 import { applyCursorFilter, makeCursor } from './cursor';
 import { getDefaultSqlExecutor } from './DefaultSqlExecutor';
@@ -28,12 +29,12 @@ import {
   SqlChildQueryResolver,
   SqlConnectionChildResolver,
 } from './internal';
-import { EquiJoinSpec, getJoinTable, isEquiJoin, isSameJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
+import { EquiJoinSpec, getJoinTable, isEquiJoin, isFromColumns, isSameJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
 import { TableResolver } from './TableResolver';
 import { getTableName, getTableQuery, isDerivedTable, Row, RowsQueryBuilder, TableLike } from './TableSpec';
 
 interface SelectColumn {
-  table: string;
+  table?: string;
   column: string;
   alias?: string;
 }
@@ -145,6 +146,13 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return this;
   }
 
+  public addSelectAlias(columnAlias: string): string {
+    if (!this.selects.get(columnAlias)) {
+      this.selects.set(columnAlias, { column: columnAlias });
+    }
+    return columnAlias;
+  }
+
   public addSelectColumn(column: string, table = this.defaultTable, columnAlias?: string): string {
     return this.addSelectColumnFromAlias(column, this.getTableAlias(table), columnAlias);
   }
@@ -157,26 +165,26 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     if (!existing) {
       this.selects.set(name, select);
     } else if (!isSameSelect(select, existing)) {
-      name = this.addSelectAlias(select, columnAlias ?? `${tableAlias}_${column}`);
+      name = this.addSelectWithAlias(select, columnAlias ?? `${tableAlias}_${column}`);
     }
     return name;
   }
 
   public addSelectExpression(expr: string | Knex.Raw, alias = 'expr'): string {
-    return this.addSelectAlias({ expr, alias }, alias);
+    return this.addSelectWithAlias({ expr, alias }, alias);
   }
 
-  public addCoalesceColumn(column: string, tables: string[]): string {
+  public addCoalesceColumn(column: string, tables: string[], columnAlias = column): string {
     return this.addCoalesceExpressionFromAliases(
       tables.map((table) => [this.getTableAlias(table), column]),
-      column
+      columnAlias
     );
   }
 
-  public addCoalesceColumnFromAliases(column: string, tableAliases: string[]): string {
+  public addCoalesceColumnFromAliases(column: string, tableAliases: string[], columnAlias = column): string {
     return this.addCoalesceExpressionFromAliases(
       tableAliases.map((tableAlias) => [tableAlias, column]),
-      column
+      columnAlias
     );
   }
 
@@ -191,7 +199,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     if (aliasQualifiedColumns.length === 1) {
       const [table, column] = aliasQualifiedColumns[0];
       this.checkTableAlias(table, column);
-      return this.addSelectAlias({ table, column }, columnAlias ?? column);
+      return this.addSelectWithAlias({ table, column }, columnAlias ?? column);
     }
 
     let sql = 'coalesce(';
@@ -217,7 +225,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     }
   }
 
-  private addSelectAlias(select: Select, baseAlias: string): string {
+  private addSelectWithAlias(select: Select, baseAlias: string): string {
     for (let index = 1, alias = baseAlias; ; ++index, alias = `${baseAlias}${index}`) {
       const existing = this.selects.get(alias);
       if (!existing) {
@@ -322,6 +330,12 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   public getJoins(): readonly JoinSpec[] {
     return Array.from(this.joinTables.values(), (jt) => jt.join);
+  }
+
+  public addAliasField(field: string, columnAlias: string): this {
+    this.addSelectAlias(columnAlias);
+    this.addField(field, (row) => row[columnAlias]);
+    return this;
   }
 
   public addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this {
@@ -609,8 +623,17 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       fromRestrictions = [],
     } = join;
     query.leftJoin(getKnexJoinTable(join), (clause) => {
-      for (let i = 0; i < join.toColumns.length; ++i) {
-        clause.on(`${toAlias}.${join.toColumns[i]}`, `${fromAlias}.${join.fromColumns[i]}`);
+      if (isFromColumns(join)) {
+        for (let i = 0; i < join.toColumns.length; ++i) {
+          clause.on(`${toAlias}.${join.toColumns[i]}`, `${fromAlias}.${join.fromColumns[i]}`);
+        }
+      } else {
+        for (let i = 0; i < join.toColumns.length; ++i) {
+          const alias = join.fromColumnAliases[i];
+          const select = this.selects.get(alias);
+          const expr = select && 'expr' in select ? select.expr : alias;
+          clause.on(`${toAlias}.${join.toColumns[i]}`, '=', expr);
+        }
       }
       this.addJoinRestrictions(clause, toAlias, toRestrictions);
       this.addJoinRestrictions(clause, fromAlias, fromRestrictions);
@@ -620,10 +643,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
 
   private addJoinRestrictions(clause: Knex.JoinClause, table: string, restrictions: ColumnRestriction[]): void {
     for (const r of restrictions) {
+      const c = qualifyColumnOrAliasRef(r, table);
       if ('value' in r) {
-        clause.on(`${table}.${r.column}`, r.operator || '=', this.knex.raw('?', [r.value]));
+        clause.on(c, r.operator || '=', this.knex.raw('?', [r.value]));
       } else {
-        clause.onIn(`${table}.${r.column}`, r.values);
+        clause.onIn(c, r.values);
       }
     }
   }

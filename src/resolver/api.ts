@@ -66,6 +66,7 @@ export interface SqlFieldResolver {
 
   withData(data: Record<string, any>): this;
 
+  addAliasField(field: string, columnAlias: string): this;
   addConstantField(field: string, value: Json): this;
   addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this;
   addCoalesceColumnField(field: string, column: string, tables: string[], func?: (value: any, row: Row) => Json): this;
@@ -118,12 +119,13 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   forceTableAlias(tableAlias: string): this;
 
   setDistinct(): this;
+  addSelectAlias(columnAlias: string): string;
   addSelectColumn(column: string, table?: string, columnAlias?: string): string;
   addSelectColumnFromAlias(column: string, tableAlias: string, columnAlias?: string): string;
   addSelectExpression(expr: string | Knex.Raw, alias?: string): string;
 
-  addCoalesceColumn(column: string, tables: string[]): string;
-  addCoalesceColumnFromAliases(column: string, tableAliases: string[]): string;
+  addCoalesceColumn(column: string, tables: string[], columnAlias?: string): string;
+  addCoalesceColumnFromAliases(column: string, tableAliases: string[], columnAlias?: string): string;
   addCoalesceExpression(tableQualifiedColumns: [string, string][], columnAlias?: string): string;
   addCoalesceExpressionFromAliases(aliasQualifiedColumns: [string, string][], columnAlias?: string): string;
 

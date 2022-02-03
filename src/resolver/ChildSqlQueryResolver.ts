@@ -1,6 +1,8 @@
 import { PropertyDumper } from 'dumpable';
 import { Knex } from 'knex';
+import { isFromColumns } from '.';
 import { Json, JsonObject, ResolverArgs, SqlQueryResolver, SqlResolverOptions, TypeNameOrFunction } from './api';
+import { qualifyColumnOrAliasRef } from './ColumnRef';
 import { ContainingSqlQueryResolver } from './ContainingSqlQueryResolver';
 import { FetchMap, FetchResult, InternalSqlResolverFactory, ParentRowMap, SqlChildQueryResolver } from './internal';
 import { EquiJoinSpec, getConnectingKey, getFromKey, getToKey, isEquiJoin, isSameKey, JoinSpec } from './JoinSpec';
@@ -44,7 +46,9 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     const toTable = getTableName(join.toTable);
     this.addTableAlias(toTable, join.toAlias || toTable);
     for (let i = 0; i < join.toColumns.length; ++i) {
-      const fromSelect = outerResolver.addSelectColumn(join.fromColumns[i], join.fromTable);
+      const fromSelect = isFromColumns(join)
+        ? outerResolver.addSelectColumn(join.fromColumns[i], join.fromTable)
+        : outerResolver.addSelectAlias(join.fromColumnAliases[i]);
       this.fromSelects.push(fromSelect);
       const toSelect = this.addSelectColumn(join.toColumns[i], toTable);
       this.toSelects.push(toSelect);
@@ -197,10 +201,11 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     const qualifiedColumns = toColumns.map((toColumn) => getKnexSelectColumn({ table: toTableName, column: toColumn }));
     baseQuery.whereIn(qualifiedColumns, parentKeys);
     for (const r of toRestrictions) {
+      const c = qualifyColumnOrAliasRef(r, toTableName);
       if ('value' in r) {
-        baseQuery.where(`${toTable}.${r.column}`, r.operator || '=', this.knex.raw('?', [r.value]));
+        baseQuery.where(c, r.operator || '=', this.knex.raw('?', [r.value]));
       } else {
-        baseQuery.whereIn(`${toTable}.${r.column}`, r.values);
+        baseQuery.whereIn(c, r.values);
       }
     }
     const dataQuery = this.buildDataQuery(baseQuery);
