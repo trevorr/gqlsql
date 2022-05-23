@@ -86,7 +86,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
       rows = rows.map((row) => rowTransform(row, row[idAlias]));
     }
     rows = this.filterFetch(rows);
-    const result = this.buildFetchResult(rows);
+    const result = this.buildFetchResult(rows, idValues.length);
 
     if (this.needTotalCount) {
       result.totalCount = totalCount;

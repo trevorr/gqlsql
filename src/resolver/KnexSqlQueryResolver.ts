@@ -715,17 +715,17 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return this.fetchFilters.reduce((rows, filter) => filter(rows), rows);
   }
 
-  protected buildFetchResult(rows: Row[]): FetchResult {
-    let hasPreviousPage = false;
-    let hasNextPage = false;
+  // searchCount is the number of IDs returned by search, which can be greater than
+  // the number of rows found if the search index contains records not in the database
+  protected buildFetchResult(rows: Row[], searchCount = rows.length): FetchResult {
+    let hasPreviousPage: boolean;
+    let hasNextPage: boolean;
     const { args } = this;
     const limit = this.getLimit();
     if (!this.reverseOrder) {
-      if (args.after) {
-        hasPreviousPage = true;
-      }
+      hasPreviousPage = args.after != null;
+      hasNextPage = searchCount > limit;
       if (rows.length > limit) {
-        hasNextPage = true;
         rows.splice(limit);
       }
       if (args.last && rows.length > args.last) {
@@ -733,11 +733,9 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
         rows.splice(0, rows.length - args.last);
       }
     } else {
-      if (args.before) {
-        hasNextPage = true;
-      }
+      hasNextPage = args.before != null;
+      hasPreviousPage = searchCount > limit;
       if (rows.length > limit) {
-        hasPreviousPage = true;
         rows.splice(limit);
       }
       rows.reverse();
@@ -746,8 +744,8 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       rows,
       hasPreviousPage,
       hasNextPage,
-      afterCursor: args.after || undefined,
-      beforeCursor: args.before || undefined,
+      afterCursor: args.after ?? undefined,
+      beforeCursor: args.before ?? undefined,
     };
   }
 
