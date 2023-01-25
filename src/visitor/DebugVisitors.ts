@@ -10,8 +10,8 @@ function getFieldVisitors(type: string): FieldVisitors {
       has(): boolean {
         return true;
       },
-      get(_, p: string | number | symbol): RecursiveVisitor {
-        return (context: any, info: GraphQLVisitorInfo): any => {
+      get(_, p: string | number | symbol): RecursiveVisitor<number> {
+        return (context: number, info: GraphQLVisitorInfo): number => {
           const method = String(p);
           if (!method.endsWith('After')) {
             const indent = '  '.repeat(context);

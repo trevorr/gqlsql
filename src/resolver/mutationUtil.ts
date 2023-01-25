@@ -1,11 +1,11 @@
 import mapObject from 'map-obj';
 import { snakeCase } from 'snake-case';
 
-export function hasDefinedElement(arr: any[]): boolean {
+export function hasDefinedElement(arr: unknown[]): boolean {
   return arr.some((v) => v !== undefined);
 }
 
-export function hasDefinedValue(obj: { [s: string]: any } | ArrayLike<any>): boolean {
+export function hasDefinedValue(obj: { [s: string]: unknown } | ArrayLike<unknown>): boolean {
   return hasDefinedElement(Object.values(obj));
 }
 

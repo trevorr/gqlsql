@@ -1,8 +1,9 @@
 import { Knex } from 'knex';
+import { SqlValue } from './api';
 
-export type Row = Record<string, any>;
+export type Row = Record<string, SqlValue>;
 
-export type RowsQueryBuilder = Knex.QueryBuilder<any, Row[]>;
+export type RowsQueryBuilder = Knex.QueryBuilder<Row, Row[]>;
 
 export interface DerivedTable {
   query: RowsQueryBuilder | Knex.Raw;

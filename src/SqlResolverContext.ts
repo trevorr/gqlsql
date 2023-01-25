@@ -1,6 +1,7 @@
 import { Knex } from 'knex';
 import { TypeMetadata } from './meta';
 import { SqlExecutor, SqlResolverFactory, UserInputErrorConstructor } from './resolver';
+import { Row } from './resolver/TableSpec';
 import { XidQueryBuilder } from './XidQueryBuilder';
 import { XidsQueryBuilder } from './XidsQueryBuilder';
 
@@ -22,12 +23,14 @@ export interface SqlResolverContext {
     meta: TypeMetadata,
     trx?: Knex.Transaction
   ): Promise<(string | number)[] | null | undefined>;
-  queryRow(
-    query: Knex.QueryBuilder,
+  queryRow<TResult extends Row>(
+    query: Knex.QueryBuilder<Row, TResult[]>,
     description?: string | TypeMetadata,
     id?: string | number
-  ): Promise<Record<string, any>>;
-  queryOptionalRow(query: Knex.QueryBuilder): Promise<Record<string, any>>;
+  ): Promise<TResult>;
+  queryOptionalRow<TResult extends Row>(
+    query: Knex.QueryBuilder<Row, TResult[]>
+  ): Promise<TResult | Record<string, never>>;
   throwNotFound(description: string | TypeMetadata, id?: string | number): never;
   extend<Props extends Record<string, unknown>>(props: Props): this & Props;
 }

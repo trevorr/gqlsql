@@ -8,6 +8,7 @@ import {
   SqlResolverOptions,
   UserInputErrorConstructor,
 } from './resolver';
+import { Row } from './resolver/TableSpec';
 import { SqlResolverContext } from './SqlResolverContext';
 import { XidQueryBuilder } from './XidQueryBuilder';
 import { XidsQueryBuilder } from './XidsQueryBuilder';
@@ -53,20 +54,22 @@ class SqlResolverContextImpl implements SqlResolverContext {
     return xids && xids.length > 0 ? this.forXids(xids, meta, trx).getIds() : undefined;
   }
 
-  public async queryRow(
-    query: Knex.QueryBuilder,
+  public async queryRow<TResult extends Row>(
+    query: Knex.QueryBuilder<Row, TResult[]>,
     description: string | TypeMetadata = 'Row',
     id?: string | number
-  ): Promise<Record<string, any>> {
-    const rows = await this.sqlExecutor.execute<any[]>(query);
+  ): Promise<TResult> {
+    const rows = await this.sqlExecutor.execute(query);
     if (!rows.length) {
       this.throwNotFound(description, id);
     }
     return rows[0];
   }
 
-  public async queryOptionalRow(query: Knex.QueryBuilder): Promise<Record<string, any>> {
-    const rows = await this.sqlExecutor.execute<any[]>(query);
+  public async queryOptionalRow<TResult extends Row>(
+    query: Knex.QueryBuilder<Row, TResult[]>
+  ): Promise<TResult | Record<string, never>> {
+    const rows = await this.sqlExecutor.execute(query);
     return rows.length ? rows[0] : {};
   }
 

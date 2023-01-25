@@ -1,3 +1,5 @@
+import { Json } from './api';
+
 export function arrayEqual<T>(a: T[], b: T[], compare = (a: T, b: T): boolean => a === b): boolean {
   return a.length === b.length && a.every((v, i) => compare(v, b[i]));
 }
@@ -20,4 +22,23 @@ export function findMap<S, T>(a: Iterable<T>, f: (v: T) => S | false | null | un
 
 export function notNull<T>(value: T | null | undefined): value is T {
   return value != null;
+}
+
+export function assertJson(value: unknown): asserts value is Json {
+  switch (typeof value) {
+    case 'boolean':
+    case 'number':
+    case 'string':
+      break;
+    case 'object':
+      if (Array.isArray(value)) {
+        value.forEach(assertJson);
+      } else if (value != null) {
+        Object.values(value).forEach(assertJson);
+      }
+      break;
+    default:
+      // bigint, function, symbol, undefined
+      throw new Error(`JSON value expected, got ${typeof value}`);
+  }
 }

@@ -1,8 +1,6 @@
 import Debug from 'debug';
 import {
   Connection,
-  Json,
-  JsonObject,
   ResolverArgs,
   SqlConnectionResolver,
   SqlQueryResolver,
@@ -32,18 +30,18 @@ export type FetchMap = Map<SqlQueryResolver, FetchLookup>;
 export type ParentRowMap = Map<SqlQueryResolver, Row>;
 
 export interface ResultBuilder<T = Row> {
-  buildResult(data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap): JsonObject | null;
+  buildResult(data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap): Record<string, unknown> | null;
 }
 
 export interface SqlChildQueryResolver extends SqlQueryResolver {
   fetch(parentRows: Row[], fetchMap: FetchMap): Promise<void>;
-  buildObjectList(fetchMap: FetchMap, parentRow: Row, parentRowMap: ParentRowMap): JsonObject[];
-  buildJsonList(fetchMap: FetchMap, parentRow: Row, func: (row: Row) => Json): Json[];
+  buildObjectList(fetchMap: FetchMap, parentRow: Row, parentRowMap: ParentRowMap): Record<string, unknown>[];
+  buildJsonList(fetchMap: FetchMap, parentRow: Row, func: (row: Row) => unknown): unknown[];
 }
 
 export interface SqlConnectionChildResolver extends SqlConnectionResolver {
   getNodeResolver(): SqlChildQueryResolver;
-  buildResultFor(parentRow: Row, parentRowMap: ParentRowMap, fetchMap: FetchMap): Partial<Connection<JsonObject>>;
+  buildResultFor(parentRow: Row, parentRowMap: ParentRowMap, fetchMap: FetchMap): Partial<Connection>;
 }
 
 export interface SqlContainingQueryResolver extends SqlQueryResolver, ResultBuilder<Row> {

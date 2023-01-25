@@ -1,6 +1,5 @@
 import { Knex } from 'knex';
 import {
-  JsonObject,
   ResolverArgs,
   SearchId,
   SearchRowTransform,
@@ -65,7 +64,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
   private async fetchTotalCount(): Promise<number> {
     const query = this.buildTotalCountQuery(this.getBaseQuery().clone());
     const rows = await this.options.sqlExecutor.execute(query);
-    return parseInt(rows[0].totalCount);
+    return Number(rows[0].totalCount);
   }
 
   public async fetchFromSearch(
@@ -83,7 +82,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
     }, new Map<string, Row>());
     let rows = idValues.map((id) => rowsById.get(String(id))).filter(notNull);
     if (rowTransform) {
-      rows = rows.map((row) => rowTransform(row, row[idAlias]));
+      rows = rows.map((row) => rowTransform(row, String(row[idAlias])));
     }
     rows = this.filterFetch(rows);
     const result = this.buildFetchResult(rows, idValues.length);
@@ -98,7 +97,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
     return map;
   }
 
-  public async execute(): Promise<JsonObject[]> {
+  public async execute(): Promise<Record<string, unknown>[]> {
     const fetchMap = await this.fetch();
     const fetchLookup = fetchMap.get(this);
     const result = fetchLookup!();
@@ -109,7 +108,7 @@ export class RootSqlQueryResolver extends KnexSqlQueryResolver implements SqlQue
     });
   }
 
-  public async executeLookup(): Promise<JsonObject | null> {
+  public async executeLookup(): Promise<Record<string, unknown> | null> {
     this.lookup = true;
     const rows = await this.execute();
     return rows.length > 0 ? rows[0] : null;

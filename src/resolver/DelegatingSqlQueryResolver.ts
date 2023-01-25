@@ -3,12 +3,11 @@ import { Knex } from 'knex';
 import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
 import {
   FetchFilter,
-  Json,
-  JsonObject,
   ResolverArgs,
   SqlConnectionResolver,
   SqlQueryResolver,
   SqlTypeVisitors,
+  SqlValue,
   TypeNameOrFunction,
 } from './api';
 import { BaseSqlQueryResolver, FetchMap, ParentRowMap } from './internal';
@@ -32,7 +31,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     this.baseResolver = baseResolver;
   }
 
-  public get data(): Record<string, any> {
+  public get data(): Record<string, unknown> {
     return this.baseResolver.data;
   }
 
@@ -40,7 +39,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this.baseResolver.visitors;
   }
 
-  public withData(data: Record<string, any>): this {
+  public withData(data: Record<string, unknown>): this {
     this.baseResolver.withData(data);
     return this;
   }
@@ -130,7 +129,12 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this;
   }
 
-  public addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this {
+  public addColumnField(
+    field: string,
+    column: string,
+    table?: string,
+    func?: (value: SqlValue, row: Row) => unknown
+  ): this {
     const alias = this.addSelectColumn(column, table);
     this.addField(field, func ? (row) => func(row[alias], row) : (row) => row[alias]);
     return this;
@@ -140,7 +144,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     field: string,
     column: string,
     tables: string[],
-    func?: (value: any, row: Row) => Json
+    func?: (value: SqlValue, row: Row) => unknown
   ): this {
     const alias = this.addCoalesceColumn(column, tables);
     this.addField(field, func ? (row) => func(row[alias], row) : (row) => row[alias]);
@@ -175,7 +179,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     field: string,
     join: EquiJoinSpec | EquiJoinSpec[],
     column: string,
-    func?: (value: any, row: Row) => Json
+    func?: (value: SqlValue, row: Row) => unknown
   ): SqlQueryResolver {
     const resolver = this.baseResolver.createChildResolver(this, this.resolvePrimaryJoin(join));
     const alias = resolver.addSelectColumn(column);
@@ -202,7 +206,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
   public addDerivedListField(
     field: string,
     join: EquiJoinSpec | EquiJoinSpec[],
-    func: (row: Row) => Json
+    func: (row: Row) => SqlValue
   ): SqlQueryResolver {
     const resolver = this.baseResolver.createChildResolver(this, this.resolvePrimaryJoin(join));
     this.addField(field, (parentRow, _, fetchMap) => resolver.buildJsonList(fetchMap, parentRow, func));
@@ -233,10 +237,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
       args,
       typeNameOrFn
     );
-    this.addField(
-      field,
-      (row, parentRowMap, fetchMap) => resolver.buildResultFor(row, parentRowMap, fetchMap) as JsonObject
-    );
+    this.addField(field, (row, parentRowMap, fetchMap) => resolver.buildResultFor(row, parentRowMap, fetchMap) as Row);
     return resolver;
   }
 
@@ -265,7 +266,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this;
   }
 
-  public buildResult(data: Row, parentRowMap: ParentRowMap, fetchMap: FetchMap): JsonObject | null {
+  public buildResult(data: Row, parentRowMap: ParentRowMap, fetchMap: FetchMap): Record<string, unknown> | null {
     if (this.testColumn && data[this.testColumn] == null) {
       return null;
     }

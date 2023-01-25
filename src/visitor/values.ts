@@ -1,9 +1,9 @@
 import { ValueNode } from 'graphql';
 import { GraphQLVisitorInfo } from './GraphQLVisitorInfo';
 
-type VariableValues = Record<string, any>;
+type VariableValues = Record<string, unknown>;
 
-export function getValue(n: ValueNode, variableValues: VariableValues): any {
+export function getValue(n: ValueNode, variableValues: VariableValues): unknown {
   switch (n.kind) {
     case 'NullValue':
       return null;
@@ -16,7 +16,7 @@ export function getValue(n: ValueNode, variableValues: VariableValues): any {
     case 'ListValue':
       return n.values.map((v) => getValue(v, variableValues));
     case 'ObjectValue':
-      return n.fields.reduce((obj: any, f) => {
+      return n.fields.reduce((obj: Record<string, unknown>, f) => {
         obj[f.name.value] = getValue(f.value, variableValues);
         return obj;
       }, {});
@@ -32,8 +32,8 @@ export function isTrueValue(value: ValueNode, variableValues: VariableValues): b
   );
 }
 
-export function resolveArguments(info: GraphQLVisitorInfo): Record<string, any> {
-  const result: Record<string, any> = {};
+export function resolveArguments(info: GraphQLVisitorInfo): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
   const args = info.fieldNode.arguments;
   if (args) {
     for (const arg of args) {

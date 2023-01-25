@@ -15,6 +15,8 @@ export interface JsonObject {
   [property: string]: Json;
 }
 
+export type SqlValue = Json | Date | Buffer;
+
 export interface PageInfo {
   hasPreviousPage: boolean;
   hasNextPage: boolean;
@@ -22,12 +24,12 @@ export interface PageInfo {
   endCursor: string | null;
 }
 
-export interface Edge<T> {
+export interface Edge<T = Record<string, unknown>> {
   cursor: string;
   node: Partial<T>;
 }
 
-export interface Connection<T> {
+export interface Connection<T = Record<string, unknown>> {
   edges: Edge<Partial<T>>[];
   nodes: Partial<T>[];
   pageInfo: PageInfo;
@@ -42,7 +44,7 @@ export interface ConnectionArgs {
 }
 
 export interface ResolverArgs extends ConnectionArgs {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type FetchFilter = (rows: Row[]) => Row[];
@@ -60,18 +62,28 @@ export interface SqlTypeVisitors {
   readonly pageInfo: ShallowTypeVisitors<SqlPageInfoResolver, void>;
 }
 
+// Defined as an interface for augmentation
+export interface SqlResolverData {
+  [key: string]: unknown;
+}
+
 export interface SqlFieldResolver {
-  readonly data: Record<string, any>;
+  readonly data: SqlResolverData;
   readonly visitors: SqlTypeVisitors;
 
-  withData(data: Record<string, any>): this;
+  withData(data: SqlResolverData): this;
 
   addAliasField(field: string, columnAlias: string): this;
-  addConstantField(field: string, value: Json): this;
-  addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this;
-  addCoalesceColumnField(field: string, column: string, tables: string[], func?: (value: any, row: Row) => Json): this;
+  addConstantField(field: string, value: unknown): this;
+  addColumnField(field: string, column: string, table?: string, func?: (value: SqlValue, row: Row) => unknown): this;
+  addCoalesceColumnField(
+    field: string,
+    column: string,
+    tables: string[],
+    func?: (value: SqlValue, row: Row) => unknown
+  ): this;
   addExpressionField(field: string, expr: string | Knex.Raw, alias?: string): this;
-  addDerivedField(field: string, func: (row: Row) => Json): this;
+  addDerivedField(field: string, func: (row: Row) => unknown): this;
   addObjectField(field: string, join?: EquiJoinSpec, typeNameOrFn?: TypeNameOrFunction): SqlQueryResolver;
   addUnionField(field: string, joins: UnionJoinSpec[]): SqlQueryResolver;
 
@@ -79,7 +91,7 @@ export interface SqlFieldResolver {
     field: string,
     join: EquiJoinSpec | EquiJoinSpec[],
     column: string,
-    func?: (value: any, row: Row) => Json
+    func?: (value: SqlValue, row: Row) => unknown
   ): SqlQueryResolver;
   addExpressionListField(
     field: string,
@@ -87,7 +99,11 @@ export interface SqlFieldResolver {
     expr: string | Knex.Raw,
     alias?: string
   ): SqlQueryResolver;
-  addDerivedListField(field: string, join: EquiJoinSpec | EquiJoinSpec[], func: (row: Row) => Json): SqlQueryResolver;
+  addDerivedListField(
+    field: string,
+    join: EquiJoinSpec | EquiJoinSpec[],
+    func: (row: Row) => unknown
+  ): SqlQueryResolver;
   addObjectListField(
     field: string,
     join: EquiJoinSpec | EquiJoinSpec[],
@@ -145,15 +161,15 @@ export interface SqlQueryResolver extends SqlFieldResolver {
 
 export interface SqlQueryRootResolver extends SqlQueryResolver {
   getDataQuery(): RowsQueryBuilder;
-  execute(): Promise<JsonObject[]>;
-  executeLookup(): Promise<JsonObject | null>;
+  execute(): Promise<Record<string, unknown>[]>;
+  executeLookup(): Promise<Record<string, unknown> | null>;
 }
 
 export interface SqlConnectionResolver {
-  readonly data: Record<string, any>;
+  readonly data: SqlResolverData;
   readonly visitors: SqlTypeVisitors;
 
-  withData(data: Record<string, any>): this;
+  withData(data: SqlResolverData): this;
 
   getNodeResolver(): SqlQueryResolver;
   getEdgesResolver(): SqlEdgeResolver;
@@ -167,13 +183,13 @@ export interface SqlConnectionResolver {
 }
 
 export interface SqlConnectionRootResolver extends SqlConnectionResolver {
-  execute(): Promise<Partial<Connection<JsonObject>>>;
+  execute(): Promise<Partial<Connection>>;
   executeFromSearch(
     idColumn: string,
     idValues: SearchId[],
     totalCount: number,
     rowTransform?: SearchRowTransform
-  ): Promise<Partial<Connection<JsonObject>>>;
+  ): Promise<Partial<Connection>>;
 }
 
 export interface SqlEdgeResolver extends SqlFieldResolver {
@@ -189,11 +205,11 @@ export interface SqlPageInfoResolver {
 }
 
 export interface SqlExecutor {
-  execute<T>(query: Knex.QueryBuilder<any, T>): Promise<T>;
+  execute<TResult, TRecord extends Row = Row>(query: Knex.QueryBuilder<TRecord, TResult>): Promise<TResult>;
 }
 
 export interface UserInputErrorConstructor {
-  new (message: string, properties?: Record<string, any>): any;
+  new (message: string, properties?: Record<string, unknown>): unknown;
 }
 
 export interface SqlResolverOptions {
@@ -201,7 +217,7 @@ export interface SqlResolverOptions {
   maxLimit: number;
   sqlExecutor: SqlExecutor;
   transaction?: Knex.Transaction;
-  initialData?: Record<string, any>;
+  initialData?: Record<string, unknown>;
   visitors: Partial<SqlTypeVisitors>;
   userInputError: UserInputErrorConstructor;
 }

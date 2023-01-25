@@ -4,7 +4,7 @@ import { FragmentDefinitionNode, GraphQLSchema, OperationDefinitionNode } from '
 export interface GraphQLQueryInfo {
   readonly schema: GraphQLSchema;
   readonly fragments: { [key: string]: FragmentDefinitionNode };
-  readonly rootValue: any;
+  readonly rootValue: unknown;
   readonly operation: OperationDefinitionNode;
-  readonly variableValues: { [variableName: string]: any };
+  readonly variableValues: { [variableName: string]: unknown };
 }

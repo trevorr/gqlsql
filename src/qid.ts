@@ -1,3 +1,4 @@
+import assert from 'assert';
 import { isTableMetadata, TableMetadata, TypeMetadata } from './meta';
 import { SqlFieldResolver, SqlQueryResolver } from './resolver';
 
@@ -104,9 +105,15 @@ export function addQidField<T extends SqlQueryResolver>(resolver: T, field: stri
 export function addQidField<T extends SqlFieldResolver>(resolver: T, field: string, meta: TypeMetadata): T {
   if (isTableMetadata(meta)) {
     if (meta.randomIdColumn) {
-      resolver.addColumnField(field, meta.randomIdColumn, meta.tableName, (rid) => joinQrid(rid, meta.tableId));
+      resolver.addColumnField(field, meta.randomIdColumn, meta.tableName, (rid) => {
+        assert(typeof rid === 'string');
+        return joinQrid(rid, meta.tableId);
+      });
     } else if (meta.wellKnownIdColumn) {
-      resolver.addColumnField(field, meta.wellKnownIdColumn, meta.tableName, (wkid) => joinQwkid(wkid, meta.tableId));
+      resolver.addColumnField(field, meta.wellKnownIdColumn, meta.tableName, (wkid) => {
+        assert(typeof wkid === 'string');
+        return joinQwkid(wkid, meta.tableId);
+      });
     } else {
       throw new Error(`No external ID defined for ${meta.typeName}`);
     }
@@ -123,6 +130,7 @@ export function addQidField<T extends SqlFieldResolver>(resolver: T, field: stri
     );
     resolver.addDerivedField(field, (row) => {
       const xid = row[xidColumn];
+      assert(typeof xid === 'string');
       const typeName = queryResolver.getTypeNameFromRow(row);
       const actualMeta = (meta.objectTypes || metas).find((meta) => meta.typeName === typeName);
       return actualMeta ? qualifyXid(xid, actualMeta) : xid;

@@ -1,3 +1,4 @@
+import assert from 'assert';
 import { Knex } from 'knex';
 import { TableMetadata, TypeMetadata } from './meta';
 import { resolveQid } from './qid';
@@ -64,12 +65,13 @@ export class XidsQueryBuilder {
       if (id == null) {
         this.throwNotFound(this.tableMeta, this.xids[i]);
       }
+      assert(typeof id === 'string' || typeof id === 'number');
       ids.push(id);
     }
     return ids;
   }
 
   public async execute(): Promise<Row[]> {
-    return await this.sqlExecutor.execute<Row[]>(this.query);
+    return await this.sqlExecutor.execute(this.query);
   }
 }

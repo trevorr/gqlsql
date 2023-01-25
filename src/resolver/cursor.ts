@@ -3,7 +3,7 @@ import { Row } from './TableSpec';
 
 export type CursorValue = string | number | null;
 
-export function getCursorValue(value: any): CursorValue {
+export function getCursorValue(value: unknown): CursorValue {
   if (value == null) {
     return null;
   }

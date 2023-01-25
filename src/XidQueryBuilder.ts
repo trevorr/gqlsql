@@ -1,3 +1,4 @@
+import assert from 'assert';
 import { Knex } from 'knex';
 import { TableMetadata, TypeMetadata } from './meta';
 import { resolveQid } from './qid';
@@ -43,7 +44,12 @@ export class XidQueryBuilder {
 
   public async lookupId(): Promise<string | number | null> {
     const rows = await this.selectId().execute();
-    return rows.length > 0 ? rows[0][this.tableMeta.idColumns![0]] : null;
+    if (!rows.length) {
+      return null;
+    }
+    const id = rows[0][this.tableMeta.idColumns[0]];
+    assert(typeof id === 'string' || typeof id === 'number');
+    return id;
   }
 
   public async getId(): Promise<string | number> {
@@ -51,15 +57,17 @@ export class XidQueryBuilder {
     if (!rows.length) {
       this.throwNotFound(this.tableMeta, this.xid);
     }
-    return rows[0][this.tableMeta.idColumns![0]];
+    const id = rows[0][this.tableMeta.idColumns[0]];
+    assert(typeof id === 'string' || typeof id === 'number');
+    return id;
   }
 
   public async execute(): Promise<Row[]> {
-    return await this.sqlExecutor.execute<Row[]>(this.query);
+    return await this.sqlExecutor.execute(this.query);
   }
 
   public async update(data: object | object[]): Promise<number> {
-    return await this.sqlExecutor.execute<number>(this.query.update(data));
+    return await this.sqlExecutor.execute(this.query.update(data));
   }
 
   public async updateOrThrow(data: object | object[]): Promise<number> {
@@ -71,6 +79,6 @@ export class XidQueryBuilder {
   }
 
   public async del(): Promise<number> {
-    return await this.sqlExecutor.execute<number>(this.query.del());
+    return await this.sqlExecutor.execute(this.query.del());
   }
 }

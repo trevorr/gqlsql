@@ -1,7 +1,7 @@
 import { PropertyDumper } from 'dumpable';
 import { Knex } from 'knex';
 import { isFromColumns } from '.';
-import { Json, JsonObject, ResolverArgs, SqlQueryResolver, SqlResolverOptions, TypeNameOrFunction } from './api';
+import { ResolverArgs, SqlQueryResolver, SqlResolverOptions, TypeNameOrFunction } from './api';
 import { qualifyColumnOrAliasRef } from './ColumnRef';
 import { ContainingSqlQueryResolver } from './ContainingSqlQueryResolver';
 import { FetchMap, FetchResult, InternalSqlResolverFactory, ParentRowMap, SqlChildQueryResolver } from './internal';
@@ -173,7 +173,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
         const keyString = makeKeyString(keys);
         const result = resultByParentKey.get(keyString);
         if (result) {
-          result.totalCount = parseInt(row.totalCount);
+          result.totalCount = Number(row.totalCount);
         }
       }
     }
@@ -223,13 +223,13 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     return this.options.sqlExecutor.execute(countQuery);
   }
 
-  public buildObjectList(fetchMap: FetchMap, parentRow: Row, parentRowMap: ParentRowMap): JsonObject[] {
+  public buildObjectList(fetchMap: FetchMap, parentRow: Row, parentRowMap: ParentRowMap): Record<string, unknown>[] {
     const fetchLookup = fetchMap.get(this);
     const data = fetchLookup!(parentRow);
     return data.rows.map((row) => this.buildObject(row, parentRowMap, fetchMap));
   }
 
-  public buildJsonList(fetchMap: FetchMap, parentRow: Row, func: (row: Row) => Json): Json[] {
+  public buildJsonList(fetchMap: FetchMap, parentRow: Row, func: (row: Row) => unknown): unknown[] {
     const fetchLookup = fetchMap.get(this);
     const data = fetchLookup!(parentRow);
     return data.rows.map(func).filter((v) => v !== undefined);

@@ -22,7 +22,7 @@ export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver>
     this.edgeResolver = new SqlEdgeResolverImpl(nodeResolver, nodeResolver);
   }
 
-  public get data(): Record<string, any> {
+  public get data(): Record<string, unknown> {
     return this.nodeResolver.data;
   }
 
@@ -30,7 +30,7 @@ export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver>
     return this.nodeResolver.visitors;
   }
 
-  public withData(data: Record<string, any>): this {
+  public withData(data: Record<string, unknown>): this {
     this.nodeResolver.withData(data);
     return this;
   }

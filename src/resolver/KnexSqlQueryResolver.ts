@@ -6,13 +6,13 @@ import { Memoize } from 'typescript-memoize';
 import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
 import {
   FetchFilter,
-  Json,
   JsonObject,
   ResolverArgs,
   SqlConnectionResolver,
   SqlQueryResolver,
   SqlResolverOptions,
   SqlTypeVisitors,
+  SqlValue,
   TypeNameFunction,
   TypeNameOrFunction,
 } from './api';
@@ -85,7 +85,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   private readonly args: ResolverArgs;
   private readonly typeNameOrFn?: TypeNameOrFunction;
   protected readonly options: SqlResolverOptions;
-  public readonly data: Record<string, any>;
+  public readonly data: Record<string, unknown>;
   public readonly visitors: SqlTypeVisitors;
   private readonly selects = new Map<string, Select>();
   private distinct = false;
@@ -105,7 +105,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     args: ResolverArgs = {},
     typeNameOrFn?: TypeNameOrFunction,
     options?: Partial<SqlResolverOptions>,
-    data?: Record<string, any>
+    data?: Record<string, unknown>
   ) {
     super(defaultTable);
     this.resolverFactory = resolverFactory;
@@ -120,7 +120,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     this.reverseOrder = args.last != null && args.first == null;
   }
 
-  public withData(data: Record<string, any>): this {
+  public withData(data: Record<string, unknown>): this {
     Object.assign(this.data, data);
     return this;
   }
@@ -338,7 +338,12 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return this;
   }
 
-  public addColumnField(field: string, column: string, table?: string, func?: (value: any, row: Row) => Json): this {
+  public addColumnField(
+    field: string,
+    column: string,
+    table?: string,
+    func?: (value: SqlValue, row: Row) => unknown
+  ): this {
     const alias = this.addSelectColumn(column, table);
     this.addField(field, func ? (row) => func(row[alias], row) : (row) => row[alias]);
     return this;
@@ -348,7 +353,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     field: string,
     column: string,
     tables: string[],
-    func?: (value: any, row: Row) => Json
+    func?: (value: SqlValue, row: Row) => unknown
   ): this {
     const alias = this.addCoalesceColumn(column, tables);
     this.addField(field, func ? (row) => func(row[alias], row) : (row) => row[alias]);
@@ -449,7 +454,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     field: string,
     join: EquiJoinSpec | EquiJoinSpec[],
     column: string,
-    func?: (value: any, row: Row) => Json
+    func?: (value: SqlValue, row: Row) => unknown
   ): SqlQueryResolver {
     const resolver = this.createChildResolver(this, this.resolvePrimaryJoin(join));
     const alias = resolver.addSelectColumn(column);
@@ -476,7 +481,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   public addDerivedListField(
     field: string,
     join: EquiJoinSpec | EquiJoinSpec[],
-    func: (row: Row) => Json
+    func: (row: Row) => unknown
   ): SqlQueryResolver {
     const resolver = this.createChildResolver(this, this.resolvePrimaryJoin(join));
     this.addField(field, (parentRow, _, fetchMap) => resolver.buildJsonList(fetchMap, parentRow, func));
