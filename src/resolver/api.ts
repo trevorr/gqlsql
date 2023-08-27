@@ -135,10 +135,11 @@ export interface SqlQueryResolver extends SqlFieldResolver {
   forceTableAlias(tableAlias: string): this;
 
   setDistinct(): this;
+  hasSelectAlias(columnAlias: string): boolean;
   addSelectAlias(columnAlias: string): string;
   addSelectColumn(column: string, table?: string, columnAlias?: string): string;
   addSelectColumnFromAlias(column: string, tableAlias: string, columnAlias?: string): string;
-  addSelectExpression(expr: string | Knex.Raw, alias?: string): string;
+  addSelectExpression(expr: string | Knex.Raw | RowsQueryBuilder, alias?: string): string;
 
   addCoalesceColumn(column: string, tables: string[], columnAlias?: string): string;
   addCoalesceColumnFromAliases(column: string, tableAliases: string[], columnAlias?: string): string;

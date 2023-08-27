@@ -39,8 +39,10 @@ interface SelectColumn {
   alias?: string;
 }
 
+type SqlExpression = string | Knex.Raw | RowsQueryBuilder;
+
 interface SelectExpression {
-  expr: string | Knex.Raw;
+  expr: SqlExpression;
   alias: string;
 }
 
@@ -146,6 +148,10 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return this;
   }
 
+  public hasSelectAlias(columnAlias: string): boolean {
+    return this.selects.has(columnAlias);
+  }
+
   public addSelectAlias(columnAlias: string): string {
     if (!this.selects.get(columnAlias)) {
       this.selects.set(columnAlias, { column: columnAlias });
@@ -170,7 +176,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     return name;
   }
 
-  public addSelectExpression(expr: string | Knex.Raw, alias = 'expr'): string {
+  public addSelectExpression(expr: string | Knex.Raw | RowsQueryBuilder, alias = 'expr'): string {
     return this.addSelectWithAlias({ expr, alias }, alias);
   }
 
@@ -636,7 +642,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
         for (let i = 0; i < join.toColumns.length; ++i) {
           const alias = join.fromColumnAliases[i];
           const select = this.selects.get(alias);
-          const expr = select && 'expr' in select ? select.expr : alias;
+          const expr = select && isSelectExpression(select) ? getSqlExpressionQuery(select.expr) : alias;
           clause.on(`${toAlias}.${join.toColumns[i]}`, '=', expr);
         }
       }
@@ -820,10 +826,18 @@ function isSelectColumn(select: Select): select is SelectColumn {
   return 'column' in select;
 }
 
+function isSelectExpression(select: Select): select is SelectExpression {
+  return 'expr' in select;
+}
+
 function isSameSelect(a: Select, b: Select): boolean {
   if (isSelectColumn(a)) {
     return isSelectColumn(b) && a.column === b.column && a.table === b.table;
   } else {
-    return !isSelectColumn(b) && a.expr === b.expr;
+    return isSelectExpression(b) && getSqlExpressionQuery(a.expr) === getSqlExpressionQuery(b.expr);
   }
+}
+
+function getSqlExpressionQuery(expr: SqlExpression): string {
+  return typeof expr === 'string' ? expr : expr.toQuery();
 }

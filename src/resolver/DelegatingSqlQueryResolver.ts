@@ -85,6 +85,10 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this;
   }
 
+  public hasSelectAlias(columnAlias: string): boolean {
+    return this.baseResolver.hasSelectAlias(columnAlias);
+  }
+
   public addSelectAlias(columnAlias: string): string {
     return this.baseResolver.addSelectAlias(columnAlias);
   }
@@ -97,7 +101,7 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
     return this.baseResolver.addSelectColumnFromAlias(column, tableAlias, columnAlias);
   }
 
-  public addSelectExpression(expr: string | Knex.Raw, alias?: string): string {
+  public addSelectExpression(expr: string | Knex.Raw | RowsQueryBuilder, alias?: string): string {
     return this.baseResolver.addSelectExpression(expr, alias);
   }
 
