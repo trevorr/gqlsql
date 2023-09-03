@@ -642,7 +642,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
         for (let i = 0; i < join.toColumns.length; ++i) {
           const alias = join.fromColumnAliases[i];
           const select = this.selects.get(alias);
-          const expr = select && isSelectExpression(select) ? getSqlExpressionQuery(select.expr) : alias;
+          const expr = select && isSelectExpression(select) ? getSqlExpressionForJoin(select.expr) : alias;
           clause.on(`${toAlias}.${join.toColumns[i]}`, '=', expr);
         }
       }
@@ -840,4 +840,12 @@ function isSameSelect(a: Select, b: Select): boolean {
 
 function getSqlExpressionQuery(expr: SqlExpression): string {
   return typeof expr === 'string' ? expr : expr.toQuery();
+}
+
+function getSqlExpressionForJoin(expr: SqlExpression): string | Knex.Raw {
+  return typeof expr === 'string' || isRaw(expr) ? expr : `(${expr.toQuery()})`;
+}
+
+function isRaw(expr: SqlExpression): expr is Knex.Raw {
+  return typeof expr === 'object' && 'sql' in expr;
 }
