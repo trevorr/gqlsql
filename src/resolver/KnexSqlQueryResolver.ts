@@ -86,8 +86,8 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   private readonly baseQuery: RowsQueryBuilder;
   private readonly args: ResolverArgs;
   private readonly typeNameOrFn?: TypeNameOrFunction;
-  protected readonly options: SqlResolverOptions;
   public readonly data: Record<string, unknown>;
+  public readonly options: SqlResolverOptions;
   public readonly visitors: SqlTypeVisitors;
   private readonly selects = new Map<string, Select>();
   private distinct = false;

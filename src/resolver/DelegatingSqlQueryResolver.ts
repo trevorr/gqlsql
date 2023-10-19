@@ -1,20 +1,21 @@
 import { GraphQLResolveInfo } from 'graphql';
 import { Knex } from 'knex';
 import { GraphQLVisitorInfo, WalkOptions, walkSelections } from '../visitor';
+import { EquiJoinSpec, JoinSpec, UnionJoinSpec, isEquiJoin } from './JoinSpec';
+import { getTypeNameFromRow } from './KnexSqlQueryResolver';
+import { TableResolver } from './TableResolver';
+import { Row, RowsQueryBuilder, getTableName } from './TableSpec';
 import {
   FetchFilter,
   ResolverArgs,
   SqlConnectionResolver,
   SqlQueryResolver,
+  SqlResolverOptions,
   SqlTypeVisitors,
   SqlValue,
   TypeNameOrFunction,
 } from './api';
 import { BaseSqlQueryResolver, FetchMap, ParentRowMap } from './internal';
-import { EquiJoinSpec, isEquiJoin, JoinSpec, UnionJoinSpec } from './JoinSpec';
-import { getTypeNameFromRow } from './KnexSqlQueryResolver';
-import { TableResolver } from './TableResolver';
-import { getTableName, Row, RowsQueryBuilder } from './TableSpec';
 
 export class DelegatingSqlQueryResolver extends TableResolver implements SqlQueryResolver {
   protected readonly baseResolver: BaseSqlQueryResolver;
@@ -33,6 +34,10 @@ export class DelegatingSqlQueryResolver extends TableResolver implements SqlQuer
 
   public get data(): Record<string, unknown> {
     return this.baseResolver.data;
+  }
+
+  public get options(): SqlResolverOptions {
+    return this.baseResolver.options;
   }
 
   public get visitors(): SqlTypeVisitors {

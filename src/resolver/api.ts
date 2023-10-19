@@ -69,6 +69,7 @@ export interface SqlResolverData {
 
 export interface SqlFieldResolver {
   readonly data: SqlResolverData;
+  readonly options: SqlResolverOptions;
   readonly visitors: SqlTypeVisitors;
 
   withData(data: SqlResolverData): this;

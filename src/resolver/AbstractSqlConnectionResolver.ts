@@ -1,7 +1,14 @@
 import { getNamedType, GraphQLResolveInfo } from 'graphql';
 import { WalkOptions, walkSelections } from '../visitor';
 import { GraphQLVisitorInfo } from '../visitor/GraphQLVisitorInfo';
-import { SqlConnectionResolver, SqlEdgeResolver, SqlPageInfoResolver, SqlQueryResolver, SqlTypeVisitors } from './api';
+import {
+  SqlConnectionResolver,
+  SqlEdgeResolver,
+  SqlPageInfoResolver,
+  SqlQueryResolver,
+  SqlResolverOptions,
+  SqlTypeVisitors,
+} from './api';
 import { ConnectionVisitors } from './ConnectionVisitors';
 import { FieldResolver } from './FieldResolver';
 import { FetchResult } from './internal';
@@ -24,6 +31,10 @@ export class AbstractSqlConnectionResolver<TNR extends KnexSqlQueryResolver>
 
   public get data(): Record<string, unknown> {
     return this.nodeResolver.data;
+  }
+
+  public get options(): SqlResolverOptions {
+    return this.nodeResolver.options;
   }
 
   public get visitors(): SqlTypeVisitors {
