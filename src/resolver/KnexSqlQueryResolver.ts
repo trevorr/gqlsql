@@ -675,8 +675,9 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   protected applyPageRange(query: RowsQueryBuilder): RowsQueryBuilder {
-    const { args } = this;
-    if (args.after || args.before) {
+    const { after, before } = this.args;
+    const cursor = after || before;
+    if (cursor) {
       const cursorFields = this.cursorColumns.map((name) => {
         const select = this.selects.get(name);
         const qualifiedName = select && 'table' in select ? `${select.table}.${select.column}` : name;
@@ -684,12 +685,8 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
         const descending = orderBy?.descending === true;
         return { name, qualifiedName, descending };
       });
-      if (args.after) {
-        query = applyCursorFilter(query, args.after, cursorFields, false);
-      }
-      if (args.before) {
-        query = applyCursorFilter(query, args.before, cursorFields, true);
-      }
+      // `before` argument is always false here because we already flip the sort order via `reverseOrder`
+      query = applyCursorFilter(query, cursor, cursorFields, false);
     }
     return query;
   }
