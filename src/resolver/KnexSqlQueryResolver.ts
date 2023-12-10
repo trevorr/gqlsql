@@ -18,7 +18,8 @@ import {
 } from './api';
 import { qualifyColumnOrAliasRef } from './ColumnRef';
 import { ColumnRestriction } from './ColumnRestriction';
-import { applyCursorFilter, makeCursor } from './cursor';
+import { makeCursor } from './cursor';
+import { applyCursorFilter } from './cursorFilter';
 import { getDefaultSqlExecutor } from './DefaultSqlExecutor';
 import { DelegatingSqlQueryResolver } from './DelegatingSqlQueryResolver';
 import {
