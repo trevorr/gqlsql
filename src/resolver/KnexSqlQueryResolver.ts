@@ -117,6 +117,11 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     this.args = args;
     this.typeNameOrFn = typeNameOrFn;
     this.options = Object.assign({}, DefaultResolverOptions, options);
+    // If the given default limit is greater than the default max limit and no
+    // new max limit is given, also use the given default as the max.
+    if (this.options.defaultLimit > this.options.maxLimit && options?.maxLimit == null) {
+      this.options.maxLimit = this.options.defaultLimit;
+    }
     this.data = data || Object.assign({}, this.options.initialData);
     this.visitors = Object.assign({}, DefaultTypeVisitors, this.options.visitors);
     this.baseQuery = (this.options.transaction || knex)(getTableQuery(baseTable));
