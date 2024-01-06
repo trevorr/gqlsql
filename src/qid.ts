@@ -132,7 +132,11 @@ export function addQidField<T extends SqlFieldResolver>(resolver: T, field: stri
       const xid = row[xidColumn];
       assert(typeof xid === 'string');
       const typeName = queryResolver.getTypeNameFromRow(row);
-      const actualMeta = (meta.objectTypes || metas).find((meta) => meta.typeName === typeName);
+      // Need to check both metas (in case typeName is an interface with table)
+      // and objectTypes (in case it is an object type with an interface table)
+      const actualMeta =
+        metas.find((meta) => meta.typeName === typeName) ||
+        meta.objectTypes?.find((meta) => meta.typeName === typeName);
       return actualMeta ? qualifyXid(xid, actualMeta) : xid;
     });
   }
