@@ -1,29 +1,31 @@
 import { Dumpable, PropertyDumper } from 'dumpable';
 import equal from 'fast-deep-equal';
-import { FetchMap, ParentRowMap, ResultBuilder } from './internal';
 import { Row } from './TableSpec';
+import { FetchMap, ParentRowMap, ResultBuilder } from './internal';
+import { devMode } from './util';
 
 export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T> {
   private readonly fieldSources = new Map<
     string,
-    ((data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap) => unknown)[]
+    [(data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap) => unknown, string | undefined][]
   >();
 
   protected addField(
     field: string,
-    source: (data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap) => unknown
+    source: (data: T, parentRowMap: ParentRowMap, fetchMap: FetchMap) => unknown,
+    sourceName = source.name || (devMode ? beautifyStack(new Error().stack) : undefined)
   ): this {
     const sources = this.fieldSources.get(field);
     if (!sources) {
-      this.fieldSources.set(field, [source]);
+      this.fieldSources.set(field, [[source, sourceName]]);
     } else {
-      sources.push(source);
+      sources.push([source, sourceName]);
     }
     return this;
   }
 
   public addConstantField(field: string, value: unknown): this {
-    return this.addField(field, () => value);
+    return this.addField(field, () => value, 'constant');
   }
 
   public addDerivedField(field: string, func: (data: T) => unknown): this {
@@ -34,13 +36,23 @@ export class FieldResolver<T = Row> extends Dumpable implements ResultBuilder<T>
     const result: Record<string, unknown> = {};
     for (const [field, sources] of this.fieldSources.entries()) {
       let value = null;
-      for (const source of sources) {
+      let valueSourceName = null;
+      for (const [source, sourceName] of sources) {
         const sourceValue = source(data, parentRowMap, fetchMap);
         if (sourceValue != null) {
           if (value == null || isOrContainsOnlyEmptyConnections(value)) {
             value = sourceValue;
+            valueSourceName = sourceName;
           } else if (!equal(value, sourceValue) && !isOrContainsOnlyEmptyConnections(sourceValue)) {
-            throw new Error(`Conflicting values for field "${field}"`);
+            let message = `Conflicting values for field "${field}": ` + JSON.stringify(value);
+            if (valueSourceName) {
+              message += ` from "${valueSourceName}"`;
+            }
+            message += ' != ' + JSON.stringify(sourceValue);
+            if (sourceName) {
+              message += ` from "${sourceName}"`;
+            }
+            throw new Error(message);
           }
         }
       }
@@ -72,4 +84,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isEmptyConnection(value: Record<string, unknown>): boolean {
   return '__emptyConnection' in value;
+}
+
+function beautifyStack(stack: string | undefined): string | undefined {
+  if (stack) {
+    return stack
+      .split('\n')
+      .filter((line) => line !== 'Error' && !/node:internal/.test(line))
+      .map((line) => line.replace(/^\s*at\s+/, ''))
+      .join(', ');
+  }
+  return stack;
 }

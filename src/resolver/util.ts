@@ -1,5 +1,7 @@
 import { Json } from './api';
 
+export const devMode = process.env.NODE_ENV !== 'production';
+
 export function arrayEqual<T>(a: T[], b: T[], compare = (a: T, b: T): boolean => a === b): boolean {
   return a.length === b.length && a.every((v, i) => compare(v, b[i]));
 }
