@@ -207,7 +207,9 @@ export interface SqlPageInfoResolver {
 }
 
 export interface SqlExecutor {
-  execute<TResult, TRecord extends Row = Row>(query: Knex.QueryBuilder<TRecord, TResult>): Promise<TResult>;
+  execute<TResult, TRecord extends Row = Row>(
+    query: Knex.QueryBuilder<TRecord, TResult> | Knex.Raw<TResult>
+  ): Promise<TResult>;
 }
 
 export interface UserInputErrorConstructor {

@@ -5,7 +5,7 @@ import { Row } from './TableSpec';
 
 class DefaultSqlExecutor implements SqlExecutor {
   public async execute<TResult, TRecord extends Row = Row>(
-    query: Knex.QueryBuilder<TRecord, TResult>
+    query: Knex.QueryBuilder<TRecord, TResult> | Knex.Raw<TResult>
   ): Promise<TResult> {
     if (debug.enabled) {
       const sql = query.toSQL();
