@@ -10,6 +10,7 @@ export interface TableMetadata extends BaseTypeMetadata {
   idColumns: string[];
   randomIdColumn?: string;
   wellKnownIdColumn?: string;
+  softDeleteColumn?: string;
 }
 
 export interface UnionMetadata extends BaseTypeMetadata {
