@@ -5,7 +5,7 @@ export type ColumnValue = string | number | boolean | Buffer | Date;
 
 export type ColumnCompare = ColumnOrAliasRef & {
   operator?: string; // default '='
-  value: ColumnValue;
+  value: ColumnValue | null;
 };
 
 export type ColumnIn = ColumnOrAliasRef & {

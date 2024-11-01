@@ -41,6 +41,7 @@ export type EquiJoinSpec = FromColumnsOrAliases & {
   fromAlias?: string;
   fromRestrictions?: ColumnRestriction[];
   forced?: boolean;
+  inner?: boolean;
 };
 
 export type UnionJoinSpec = EquiJoinSpec & {

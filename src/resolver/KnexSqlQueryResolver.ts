@@ -17,7 +17,7 @@ import {
   TypeNameOrFunction,
 } from './api';
 import { qualifyColumnOrAliasRef } from './ColumnRef';
-import { ColumnRestriction } from './ColumnRestriction';
+import { ColumnRestriction, isColumnCompare } from './ColumnRestriction';
 import { makeCursor } from './cursor';
 import { applyCursorFilter } from './cursorFilter';
 import { getDefaultSqlExecutor } from './DefaultSqlExecutor';
@@ -638,8 +638,9 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       fromAlias = fromTable,
       toRestrictions = [],
       fromRestrictions = [],
+      inner = false,
     } = join;
-    query.leftJoin(getKnexJoinTable(join), (clause) => {
+    query[inner ? 'innerJoin' : 'leftJoin'](getKnexJoinTable(join), (clause) => {
       if (isFromColumns(join)) {
         for (let i = 0; i < join.toColumns.length; ++i) {
           clause.on(`${toAlias}.${join.toColumns[i]}`, `${fromAlias}.${join.fromColumns[i]}`);
@@ -661,8 +662,14 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   private addJoinRestrictions(clause: Knex.JoinClause, table: string, restrictions: ColumnRestriction[]): void {
     for (const r of restrictions) {
       const c = qualifyColumnOrAliasRef(r, table);
-      if ('value' in r) {
-        clause.on(c, r.operator || '=', this.knex.raw('?', [r.value]));
+      if (isColumnCompare(r)) {
+        if (r.value != null) {
+          clause.on(c, r.operator || '=', this.knex.raw('?', [r.value]));
+        } else if (r.operator === '!=') {
+          clause.onNotNull(c);
+        } else {
+          clause.onNull(c);
+        }
       } else {
         clause.onIn(c, r.values);
       }
