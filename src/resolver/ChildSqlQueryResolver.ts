@@ -42,9 +42,16 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
     );
     this.parentResolver = parentResolver;
 
+    // add tables before columns in case of qualified columns referring to tables later in the join chain
     const join = (this.primaryJoin = joins[0]);
     const toTable = getTableName(join.toTable);
     this.addTableAlias(toTable, join.toAlias || toTable);
+    if (joins.length > 1) {
+      for (let i = 1; i < joins.length; ++i) {
+        this.addTable(joins[i]);
+      }
+    }
+
     for (let i = 0; i < join.toColumns.length; ++i) {
       const fromSelect = isFromColumns(join)
         ? outerResolver.addSelectColumn(join.fromColumns[i], join.fromTable)
@@ -53,12 +60,6 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
       const toSelect = this.addSelectColumn(join.toColumns[i], toTable);
       this.toSelects.push(toSelect);
       this.addOrderByAlias(toSelect);
-    }
-
-    if (joins.length > 1) {
-      for (let i = 1; i < joins.length; ++i) {
-        this.addTable(joins[i]);
-      }
     }
   }
 
@@ -140,11 +141,13 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
 
   public async fetch(parentRows: Row[], fetchMap: FetchMap): Promise<void> {
     const parentKeys = getAllRowKeys(parentRows, this.fromSelects);
+    console.dir({ fromSelects: this.fromSelects, parentKeys }, { depth: 10 });
     const allRows = await this.fetchRows(parentKeys);
     const childrenPromise = this.fetchChildren(allRows, fetchMap);
     const dataByParentKey = allRows.reduce<Map<string, [KeyValue[], Row[]]>>((map, row) => {
       const keys = getRowKeys(row, this.toSelects);
       const keyString = makeKeyString(keys);
+      console.dir({ toSelects: this.toSelects, keys, keyString }, { depth: 10 });
       let data = map.get(keyString);
       if (!data) {
         map.set(keyString, (data = [keys, []]));
@@ -152,6 +155,7 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
       data[1].push(row);
       return map;
     }, new Map<string, [KeyValue[], Row[]]>());
+    console.dir({ dataByParentKey }, { depth: 10 });
     const resultByParentKey = new Map<string, FetchResult>();
     const totalCountKeys = [];
     for (const [keyString, [keys, groupRows]] of dataByParentKey.entries()) {

@@ -1,3 +1,4 @@
+import assert from 'assert';
 import { PropertyDumper } from 'dumpable';
 import { GraphQLResolveInfo } from 'graphql';
 import { Knex } from 'knex';
@@ -166,10 +167,12 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   public addSelectColumn(column: string, table = this.defaultTable, columnAlias?: string): string {
+    [column, table] = getColumnAndTable(column, table);
     return this.addSelectColumnFromAlias(column, this.getTableAlias(table), columnAlias);
   }
 
   public addSelectColumnFromAlias(column: string, tableAlias: string, columnAlias?: string): string {
+    [column, tableAlias] = getColumnAndTable(column, tableAlias);
     this.checkTableAlias(tableAlias, column);
     let name = columnAlias ?? column;
     const select = { column, table: tableAlias, alias: columnAlias };
@@ -187,6 +190,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   public addCoalesceColumn(column: string, tables: string[], columnAlias = column): string {
+    assert(!isQualifiedColumn(column), 'Column must not be qualified');
     return this.addCoalesceExpressionFromAliases(
       tables.map((table) => [this.getTableAlias(table), column]),
       columnAlias
@@ -194,6 +198,7 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
   }
 
   public addCoalesceColumnFromAliases(column: string, tableAliases: string[], columnAlias = column): string {
+    assert(!isQualifiedColumn(column), 'Column must not be qualified');
     return this.addCoalesceExpressionFromAliases(
       tableAliases.map((tableAlias) => [tableAlias, column]),
       columnAlias
@@ -302,9 +307,9 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
       if (isDerivedTable(toTable)) {
         baseAlias = getTableName(toTable);
       } else {
-        baseAlias = toAlias || (aliasPrefix && aliasPrefix !== toTable ? `${aliasPrefix}_${toTable}` : toTable);
+        baseAlias = toAlias || toTable;
       }
-      return this.addEquiJoinAlias(join, baseAlias);
+      return this.addEquiJoinAlias(join, baseAlias, aliasPrefix);
     } else {
       const { toAlias } = join;
       let ext: JoinTable;
@@ -325,17 +330,41 @@ export abstract class KnexSqlQueryResolver extends TableResolver implements Base
     }
   }
 
-  private addEquiJoinAlias(join: EquiJoinSpec, baseAlias: string): [string, JoinTable] {
-    for (let alias = baseAlias, index = 1; ; ++index, alias = `${baseAlias}${index}`) {
-      if (alias !== this.baseTableName) {
-        const existing = this.joinTables.get(alias);
-        if (!existing) {
-          const ext = { join: { ...join, toAlias: alias }, referenced: !!join.forced, applied: false };
-          this.joinTables.set(alias, ext);
-          return [alias, ext];
-        } else if (isSameJoin(join, existing.join)) {
-          return [alias, existing];
-        }
+  private addEquiJoinAlias(join: EquiJoinSpec, baseAlias: string, aliasPrefix: string | null): [string, JoinTable] {
+    const addOrMatch = (alias: string): [string, JoinTable] | undefined => {
+      const existing = this.joinTables.get(alias);
+      if (!existing) {
+        const ext = { join: { ...join, toAlias: alias }, referenced: !!join.forced, applied: false };
+        this.joinTables.set(alias, ext);
+        return [alias, ext];
+      } else if (isSameJoin(join, existing.join)) {
+        return [alias, existing];
+      }
+    };
+
+    // Try `baseAlias` first, as long as it's not the base table name (since we
+    // know we need a join, which could be a self-join).
+    if (baseAlias !== this.baseTableName) {
+      const result = addOrMatch(baseAlias);
+      if (result) {
+        return result;
+      }
+    }
+
+    // If an alias prefix is specified, try `aliasPrefix_baseAlias` next.
+    if (aliasPrefix && aliasPrefix !== baseAlias) {
+      baseAlias = `${aliasPrefix}_${baseAlias}`;
+      const result = addOrMatch(baseAlias);
+      if (result) {
+        return result;
+      }
+    }
+
+    // Use `[aliasPrefix_]baseAliasN`, where N => 2.
+    for (let index = 2; ; ++index) {
+      const result = addOrMatch(`${baseAlias}${index}`);
+      if (result) {
+        return result;
       }
     }
   }
@@ -806,7 +835,7 @@ export function getTypeNameFromRow(typeNameOrFn: TypeNameOrFunction | undefined,
 
 export function getKnexSelectColumn(select: SelectColumn): string {
   const { table, column, alias } = select;
-  let expr = `${table}.${column}`;
+  let expr = isQualifiedColumn(column) ? column : `${table}.${column}`;
   if (alias) {
     expr += ` as ${alias}`;
   }
@@ -858,4 +887,16 @@ function getSqlExpressionForJoin(expr: SqlExpression): string | Knex.Raw {
 
 function isRaw(expr: SqlExpression): expr is Knex.Raw {
   return typeof expr === 'object' && 'sql' in expr;
+}
+
+function getColumnAndTable(column: string, defaultTable: string): [string, string] {
+  const parts = column.split('.');
+  if (parts.length > 1) {
+    return [parts[1], parts[0]];
+  }
+  return [column, defaultTable];
+}
+
+function isQualifiedColumn(column: string): boolean {
+  return column.includes('.');
 }
