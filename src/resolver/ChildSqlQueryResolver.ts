@@ -141,13 +141,11 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
 
   public async fetch(parentRows: Row[], fetchMap: FetchMap): Promise<void> {
     const parentKeys = getAllRowKeys(parentRows, this.fromSelects);
-    console.dir({ fromSelects: this.fromSelects, parentKeys }, { depth: 10 });
     const allRows = await this.fetchRows(parentKeys);
     const childrenPromise = this.fetchChildren(allRows, fetchMap);
     const dataByParentKey = allRows.reduce<Map<string, [KeyValue[], Row[]]>>((map, row) => {
       const keys = getRowKeys(row, this.toSelects);
       const keyString = makeKeyString(keys);
-      console.dir({ toSelects: this.toSelects, keys, keyString }, { depth: 10 });
       let data = map.get(keyString);
       if (!data) {
         map.set(keyString, (data = [keys, []]));
@@ -155,7 +153,6 @@ export class ChildSqlQueryResolver extends KnexSqlQueryResolver implements SqlCh
       data[1].push(row);
       return map;
     }, new Map<string, [KeyValue[], Row[]]>());
-    console.dir({ dataByParentKey }, { depth: 10 });
     const resultByParentKey = new Map<string, FetchResult>();
     const totalCountKeys = [];
     for (const [keyString, [keys, groupRows]] of dataByParentKey.entries()) {
